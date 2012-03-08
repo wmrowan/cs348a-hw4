@@ -1,5 +1,12 @@
+LIB = -lGL -lGLU -lglut
+CPPOPTS = -g
+CC = g++ $(CPPOPTS) $(LIB) -o $@ $<
+
 tour: tour.cpp
-	g++ tour.cpp -o tour
+	$(CC)
+
+run: tour
+	./tour test.tri
 
 tags:
 	ctags -R .
