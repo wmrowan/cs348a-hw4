@@ -1,6 +1,6 @@
-LIB = -lGL -lGLU -lglut
+LIB = -lglut -lGL -lGLU
 CPPOPTS = -g
-CC = g++ $(CPPOPTS) $(LIB) -o $@ $<
+CC = g++ $< $(CPPOPTS) $(LIB) -o $@ 
 
 tour: tour.cpp
 	$(CC)

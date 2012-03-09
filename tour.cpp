@@ -69,6 +69,8 @@ void draw() {
     glLoadIdentity();
 
     terrain.draw();
+
+    glutSwapBuffers();
 }
 
 void glInit(int *argc, char **argv) {
