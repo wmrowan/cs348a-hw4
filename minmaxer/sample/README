@@ -1,0 +1,100 @@
+this file contains a short guide describing how the triangulation
+functions can be incorporated into a user program. this guide is
+supplemented by a few sample programs showing several examples of the
+usage of the provided functions. there is also a Makefile provided. no
+knowledge about the various triangulation algorithms is required,
+however, it might be advantageous if the user is familiar with
+triangulations since there is no description of the propetrties of the
+various triangulations provided.
+
+it is assumed that the coordinates are stored in three integer
+arrays x, y, and z. (see the README file in directory source.minmaxer
+for an explanation for which triangulations the z-coordinate is
+needed) in case the z coordinate is not available z should be a
+pointer to NULL. the first entry in these arrays is assumed to be at
+position 0.
+
+the first step in computing a triangulation is to transfer the
+coordinates to the internal representation. this representation will
+be in a structure pointed to by a variable 'char *'. the procedure
+which transfers the data is 
+
+	  copyCoordinatesToGraph (n, x, y, z, r, &g)
+
+where n is an integer denoting the number of vertices. x, y, and z are
+of type 'int *' as described above. (if z == NULL the z-coordinates in
+the internal representation are set to 0). r is an integer which is
+either 0 or 1. the value of r determines if duplicate points are
+eliminated. if r == 0 duplicates are not eliminated, if r == 1
+duplicates are eliminated. two points are considered duplicates if
+both the x and y coordinate are identical (the z coordinate might be
+differnt). g is of type 'char *' and is a pointer to the intern
+representation.      
+
+the next step is to compute some triangulation. the corresponding
+functions are:
+
+	function:        computes triangulation:           using algorithm:
+
+	planeSweep ..... plane sweep ..................... plane sweep
+*+	delaunay1 ...... delaunay ........................ lawson flip
+	delaunay2 ...... delaunay ........................ incremental flip
+$	regular ........ regular ......................... incremental flip
+*+	minmaxAngle .... minmax angle .................... edgeinsertion
+*+$	minmaxSlope .... minmax slope .................... edgeinsertion
+*+	maxminHeight ... maxmin height ................... edgeinsertion
+
+(*) algorithm can only be applied to an already existing triangulation.
+(+) algorithm may die when duplicate points are not removed.
+($) algorithm uses z-coordinate.
+
+triangulations are stored using the quadedge data-structure. the
+functions operating on the quadedge data structure can be found in
+file source.triangulation/quadedge.h. for those not familiar with the
+quadedge data-structure a conversion function which stores the
+triangulation in a list of triangles (i.e. triples of indices, where
+index i corresponds to the vertex composed of the coordinates stored
+in i-th position of x, y, and z.) is provided. the function is
+
+	copyGraphToListOfTriangles (g, &list);
+
+where g is the pointer to the internal represenation as described
+above, and 'list' is of type 'triangleList *', i.e. a pointer to the
+list of triangles. the details of the type triangleList can be found
+in file source.triangulation/triangulation.h.
+
+a triangulation can also be dumped onto a file. the output format is
+the same as that for minmaxer, i.e. a list quintuples describing the
+vertices
+
+	site x-coord y-coord z-coord index
+
+followed by a list of triples describing the edges of the
+triangulation
+
+	edge from-vertex to-vertex
+
+the corresponding function is
+
+	saveTriangulation (g, fileName),
+
+i.e., the triangulation store in g is dumped into the file denoted by
+the variable 'fileName' (of type 'char *').
+
+sample programs using this funtions can be found in this directory.
+the names of the files are testxxxx.c, where xxxx stands for some
+triangulation. in order to compile these programs use
+
+	make testxxxx
+
+(the Makefile has to be slightly modified depending on whether or not
+the computer is a silicon graphic)
+
+the provided Makefile should also be taken as a guide to decide which
+files have to be included for a specific triangulation algorithm. in
+case that is not clear which triangulation algorithms will be used and
+memory is not a concern it is the easiest to include the files stored
+in variables TRIANGULATIONMINIMUMOBJ and ALLTRIOBJ.
+
+
+roman, sep 1992.

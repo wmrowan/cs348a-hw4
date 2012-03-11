@@ -1,0 +1,135 @@
+November 2006:
+Binary for Myth machines added after some updates to the source.
+
+Christian
+romming@cs
+
+!!!!!
+!!!!!
+!!!!!
+
+The SGI binary of minmaxer was recompiled with no graphics.  The binary
+included in minmaxer distribution no longer works.  It was compiled
+to run on an old SGI operating system.
+
+If you could compile minmaxer with the graphics on, please let me know.
+
+--An
+anguyen@cs
+
+!!!!!
+!!!!!
+!!!!!
+!!!!!
+
+MINMAXER computes the following triangulations in 2-dimensions:
+
+	delaunay
+	regular
+	minmax angle
+	maxmin height
+	minmax slope
+	plane-sweep
+
+The differences between v1.0 and v1.02 is an improved graphic
+interface and a corrected version of the lighting model. Also the
+'feature' (of v1.0) that convex hull edges where preceded by "000" in
+the output file has been removed. there are no changes in the
+implementation of the algorithms, so the computed triangulations
+of v1.0 and v1.02 should be identical. 
+In v1.03 there is a minor modification of the code. again the
+triangulations computed in v1.0 and v1.03 should be identical.
+v1.04 corrects an error in the computation of the triangle list. Again
+the triangulations computed by program minmaxer are identical to
+previous versions. this corrections affects only the triangle lists
+used to export triangulations (see the README in directory sample).
+
+the ALGORITHMS used for the computations ARE NOT HEURISTICS, but
+actually achieve the optimum. for THE IMPLEMENTATIONS of these
+algorithms, however, it is NOT clear if they ACTUALLY IMPLEMENT THOSE
+ALGORITHMS. however, for all the test data sets used (several
+hundred) the implementation worked fine.
+degeneracies are eliminated by using a method known as SoS. therefore
+a different order of the input data can produce different output.
+the program allows 3 dimensional input data. the third coordinate is
+used only for the minmax slope triangulation, and for the weight of
+the points for the regular triangulation.
+
+the original PURPOSE of minmaxer was to provide a tool which allows
+visualizing triangulation algorithms. therefore the data sets used
+where rather small (<= 20000 points). feedback about the usefullness
+for larger data sets would be appreciated (e-mail: waupo@cs.uiuc.edu).
+
+the program can be run in NO-GRAPHIC MODE (-ng) and in GRAPHIC MODE on
+a silicon graphic. graphic mode is rather slow for more than 5000
+points.
+
+for several triangulations there are MORE THAN ONE ALGORITHMS PROVIDED.
+for those algorithms for which a time complexity is given choose the
+one with the smaller complexity. in case of the delaunay triangulation
+the choice depends on the memory available and on the data. the
+incremental delaunay algorithm should be faster for data with less
+than 1% of the points on the convex hull. however it is very memory
+intensive (for 20000 points apprx. 30Mb are necessary).
+
+all the algorithms (except the incremental version of the delaunay
+algorithm, the regular triangulation and the plane-sweep
+triangulation) need an INITIAL TRIANGULATION. this triangulation can
+be computed fastest with the plane-sweep algorithm.
+
+the "minmax" and "maxmin" seem to be faster if applied to the delaunay
+triangulation.
+
+if the data contains POINTS WITH IDENTICAL COORDINATES the ALGORITHMS
+will or WILL NOT WORK (except the incremental algorithms). therefore,
+if you do not use one of the incremental algorithms choose the menu
+option "remove duplicate points".
+
+the data format is as follows. the COORDINATES MUST BE INTEGER. every
+line of the inputfile has to look like
+
+	site x-coord y-coord
+
+or
+	site x-coord y-coord z-coord
+
+(see file "sample.data" as an example input-file).
+
+if no z-coord is given, it is assumed 0. the z-coord is used for the
+weights for the regular triangulation.
+
+to run the sample program type "minmaxer sample.data", after you have
+copied "minmaxer.sgi" or "minmaxer.sun" onto "minmaxer". choose
+"remove duplicates" (just to be sure). choose "initial" and you are
+ready for the more exciting triangulations. 
+if you are IN GRAPHIC MODE DON'T FORGET to hit the "PAUSE" KEY to get
+the algorithm going.
+
+after the computation of an algorithm has finished the TRIANGULATION
+IS DUMPED INTO A FILE. the name of the file is shown on the screen.
+you can also explicitly save a triangulation in a file of your choice,
+of course.
+
+finally, some words about the GRAPHIC. you can ROTATE the points (left
+mouse button), ZOOM in and out (middle mouse button), and return to
+the ORIGINAL ORIENTATION (click the right mouse button). the menu
+allows you to choose the algorithms (once a choice has been made it's
+final). it allows you to PAUSE THE ALGORITHM, SPEED it UP or SLOW it
+DOWN, or run it as fast as it can. you can also STEP THROUGH the edge
+updates. it allows the drawing to be SLOPPY (only local changes are
+updated) or NICE (the whole screen is redrawn every time an edge is
+added, deleted, or flipped). you can have the points SPINNING (don't
+forget to give the points the necessary initial spin). you can look at
+the LIFTED POINTS (this is only of interest for those familiar with
+the lifting map).
+
+v1.02 adds the possibility to interrupt an algorithm, and to turn off
+the visual update of edge operations.
+
+
+	enjoy,
+
+	roman waupotitsch 
+       (waupo@cs.uiuc.edu)
+
+	july 1992.

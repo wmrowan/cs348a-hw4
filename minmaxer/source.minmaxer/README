@@ -1,0 +1,12 @@
+
+this directory contains the source codes for the program minmaxer (for
+both sun and sgi).
+
+to compile minmaxer just type
+
+	make
+
+
+note: the code should also work with no or only minor modifications on
+      any other computer. on a cray only minor modifications to the
+      timing functions are necessary, e.g.

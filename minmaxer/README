@@ -1,0 +1,22 @@
+
+MINMAXER is a tool which computes several different TRIANGULATIONS IN
+TWO DIMENSIONS. minmaxer also allows the visualization of the progress
+of the algorithms on a silicon graphic workstation. for a more
+detailed description of minmaxer read the file "minmaxer.bin/README".
+
+
+
+directory structure (every directory contains a README file):
+
+minmaxer.bin: executables for SUN-SPARC and SGI with sample input data.
+source.triangulation: (undocumented) source files for triangulation algorithms.
+source.minmaxer: (undocumented) source files for minmaxer.
+sample: sample programs that show how to use and compile the
+	triangulation algorithms.
+
+roman waupotitsch, sep 1992
+
+
+if you have any questions and suggestions (except the one to include more
+documentation) do not hesitate to send email to waupo@cs.uiuc.edu
+

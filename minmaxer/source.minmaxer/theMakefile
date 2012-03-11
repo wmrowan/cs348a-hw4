@@ -1,0 +1,72 @@
+SOURCE = ../source.triangulation
+
+#undef sgi
+
+/*---------------------------------------------------------------------------*/
+
+#ifdef sgi
+
+#undef sgi
+MACHINE_TYPE = sgi
+#define sgi 1
+RMEXECUTABLE = if (-e minmaxer) rm minmaxer;
+
+#else
+
+#undef sun
+MACHINE_TYPE = sun
+#define sun 1
+RMEXECUTABLE = rm minmaxer;
+
+#endif
+
+/*---------------------------------------------------------------------------*/
+
+#ifdef sgi
+
+INCLUDE = -I$(SOURCE) -I/usr/class/cs348a/pp/forms/FORMS/
+DEBUG = -o32 -O
+CFLAGS = -cckr -signed
+/*LIB = -lforms -lfm_s -lgl_s -lm*/
+/*LIB =  -lforms -lfm -lgl  -lm*/
+LIB = -lm
+LIBDIR = -L/usr/class/cs348a/pp/forms/FORMS
+
+#else
+
+INCLUDE = -I$(SOURCE)
+DEBUG = -O
+CFLAGS = 
+LIB = -lm
+LIBDIR = 
+
+#endif
+
+CC = cc $(CFLAGS) $(DEBUG)  $(INCLUDE) -o $@
+
+.SUFFIXES: .$(OBJECT) $(SUFFIXES)
+.c.$(OBJECT): 
+	$(CC)
+
+/*---------------------------------------------------------------------------*/
+
+#ifdef sgi
+VISUALOBJ = sgivisual.o sgimenu.o sgivislib.o trackball.o vect.o sgiformsmenu.o sgirender.o
+#else
+VISUALOBJ = sunvisual.o 
+#endif
+
+TRIANGULATIONMINIMUMOBJ = $(SOURCE)/novisual.o $(SOURCE)/queue.o $(SOURCE)/heap.o $(SOURCE)/stack.o $(SOURCE)/timer.o $(SOURCE)/bitvector.o $(SOURCE)/file_io.o $(SOURCE)/quicksort.o $(SOURCE)/longmath.o $(SOURCE)/graph.o $(SOURCE)/quadedge.o $(SOURCE)/triangulation.o
+
+ALLTRIOBJ = $(SOURCE)/sos.o $(SOURCE)/planesweep.o $(SOURCE)/flips.o $(SOURCE)/delaunay.o $(SOURCE)/persistent.quadedge.o $(SOURCE)/hdag.o $(SOURCE)/regular.o $(SOURCE)/edgeinsert.o $(SOURCE)/heuristic.angle.o $(SOURCE)/angle.o $(SOURCE)/heuristic.slope.o $(SOURCE)/slope.o $(SOURCE)/heuristic.height.o $(SOURCE)/height.o
+
+MINMAXEROBJ = $(TRIANGULATIONMINIMUMOBJ) $(ALLTRIOBJ) support.o minmaxer.o
+
+minmaxer: $(MINMAXEROBJ) Makefile
+	cc  $(DEBUG) -o minmaxer $(LIBDIR) $(MINMAXEROBJ) $(LIB)
+
+/*---------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*/
+/*---------------------------------------------------------------------------*/
+
+

@@ -1,0 +1,788 @@
+# site x y z index
+site -865 -6292 0 0
+site 3346 -5425 0 1
+site 1841 5839 0 2
+site 10952 5478 0 3
+site -4273 10837 0 4
+site 5604 6128 0 5
+site 11079 3608 0 6
+site -4240 10565 0 7
+site 3344 -6148 0 8
+site 6276 8952 0 9
+site 3076 -3388 0 10
+site 9943 9958 0 11
+site 8081 325 0 12
+site 9516 -197 0 13
+site -1811 5528 0 14
+site 2279 -341 0 15
+site -7249 -737 0 16
+site -8682 5022 0 17
+site -9847 -3108 0 18
+site -5958 -8306 0 19
+site -1265 4770 0 20
+site 7135 3239 0 21
+site -1364 -153 0 22
+site 5975 -2111 0 23
+site 7319 6076 0 24
+site 8025 -3118 0 25
+site 3385 -367 0 26
+site -9120 949 0 27
+site -1061 1102 0 28
+site 10848 5143 0 29
+site -1238 -7596 0 30
+site -6713 9538 0 31
+site 7770 -3300 0 32
+site 11103 -8799 0 33
+site 2765 8519 0 34
+site 9955 5070 0 35
+site 5328 -3018 0 36
+site 9964 -2138 0 37
+site 8148 6799 0 38
+site -8251 6173 0 39
+site -1482 -6539 0 40
+site -1418 -3252 0 41
+site -9589 -6957 0 42
+site -7915 -7328 0 43
+site 1647 5436 0 44
+site 5811 3916 0 45
+site -4616 -2229 0 46
+site -5412 -3739 0 47
+site 4742 -7065 0 48
+site 4524 -5317 0 49
+site -2025 3200 0 50
+site -6170 -9692 0 51
+site 9222 -9282 0 52
+site 9840 -7198 0 53
+site -9815 4449 0 54
+site 10522 -1213 0 55
+site 2982 4169 0 56
+site 2424 8757 0 57
+site 9727 2024 0 58
+site -9119 -4926 0 59
+site 9681 3048 0 60
+site 10468 6878 0 61
+site -3472 4626 0 62
+site 7104 2991 0 63
+site -1121 3176 0 64
+site 6089 2224 0 65
+site 5741 -6268 0 66
+site -8309 6156 0 67
+site 5373 4408 0 68
+site 516 5288 0 69
+site 342 3495 0 70
+site -8106 2488 0 71
+site 5226 9016 0 72
+site -2197 4646 0 73
+site -6820 -7949 0 74
+site 3006 8139 0 75
+site 143 2406 0 76
+site 11451 4097 0 77
+site -1433 -2004 0 78
+site -2293 8512 0 79
+site 1920 -2620 0 80
+site -2290 -727 0 81
+site 10375 -6975 0 82
+site -5281 826 0 83
+site -7946 4005 0 84
+site 2564 -4462 0 85
+site 3824 5681 0 86
+site 8816 5657 0 87
+site 8490 -7250 0 88
+site 1097 456 0 89
+site 8993 -9097 0 90
+site 8909 -1388 0 91
+site -159 -2487 0 92
+site 9786 2230 0 93
+site -8569 4283 0 94
+site -3401 -4626 0 95
+site -1567 9197 0 96
+site -8800 6539 0 97
+site -1937 3554 0 98
+site -8553 -6822 0 99
+site 3343 -9303 0 100
+site 1145 9606 0 101
+site 8219 -2028 0 102
+site -3156 -3716 0 103
+site -3706 -2286 0 104
+site 9749 4312 0 105
+site 7268 -8729 0 106
+site -1007 -7530 0 107
+site 6374 531 0 108
+site -4968 1978 0 109
+site -5855 -6153 0 110
+site -5839 4992 0 111
+site 2787 1736 0 112
+site -2548 8580 0 113
+site 4345 -6601 0 114
+site 4049 -8326 0 115
+site 9126 8941 0 116
+site -9549 -3540 0 117
+site 9789 -8640 0 118
+site -266 -3608 0 119
+site -7145 536 0 120
+site 8147 4696 0 121
+site 97 -3990 0 122
+site 18 3460 0 123
+site 6223 -3668 0 124
+site -1333 10380 0 125
+site 5421 8032 0 126
+site -8026 8482 0 127
+site 2468 6797 0 128
+site 2020 -4944 0 129
+site -7923 -2089 0 130
+site 7453 -5416 0 131
+site -5126 4681 0 132
+site -5969 -6775 0 133
+site -9708 9448 0 134
+site 11427 -3360 0 135
+site -8712 -9413 0 136
+site -9911 -7440 0 137
+site -4649 5028 0 138
+site 1972 -4425 0 139
+site -6489 -2349 0 140
+site -4414 -6370 0 141
+site -9117 -1497 0 142
+site -7811 2532 0 143
+site 6955 2824 0 144
+site 6578 2777 0 145
+site 5107 4064 0 146
+site 193 4153 0 147
+site -7712 9504 0 148
+site 1179 1 0 149
+site -6347 3511 0 150
+site -5964 9097 0 151
+site -996 9979 0 152
+site -2823 -9306 0 153
+site -1424 7649 0 154
+site -2053 2752 0 155
+site 3957 -3614 0 156
+site 10555 6578 0 157
+site -1760 8866 0 158
+site 950 -1428 0 159
+site 9236 2223 0 160
+site 3697 6259 0 161
+site 1788 -6212 0 162
+site 8381 964 0 163
+site 6032 9539 0 164
+site -4966 -3988 0 165
+site -3188 9969 0 166
+site -8821 9050 0 167
+site -299 -4185 0 168
+site 6250 6765 0 169
+site 1328 4527 0 170
+site 9916 -3249 0 171
+site -5346 8538 0 172
+site -630 5445 0 173
+site 4779 2 0 174
+site 6364 5036 0 175
+site -773 -9627 0 176
+site -1526 -8448 0 177
+site -7175 1251 0 178
+site 6042 -3972 0 179
+site 6356 7355 0 180
+site -2580 5797 0 181
+site 4742 10450 0 182
+site -5621 -1654 0 183
+site -5021 -8349 0 184
+site -6356 8014 0 185
+site -1679 -4233 0 186
+site 1491 4239 0 187
+site 2238 7064 0 188
+site 8799 1631 0 189
+site 10652 -3486 0 190
+site 5557 3932 0 191
+site 7213 -2799 0 192
+site 5932 1578 0 193
+site -1376 6556 0 194
+site 1316 10200 0 195
+site -2428 -2953 0 196
+site -5802 8537 0 197
+site -7624 -698 0 198
+site 1804 -3373 0 199
+
+# edge orgsite dsts
+edge 172 176
+edge 5 35
+edge 40 107
+edge 68 93
+edge 11 172
+edge 171 174
+edge 27 84
+edge 100 168
+edge 8 139
+edge 39 54
+edge 17 54
+edge 27 71
+edge 27 54
+edge 65 172
+edge 172 189
+edge 25 32
+edge 15 52
+edge 63 144
+edge 125 172
+edge 109 141
+edge 3 87
+edge 99 120
+edge 128 172
+edge 161 172
+edge 168 176
+edge 107 186
+edge 0 107
+edge 46 172
+edge 50 172
+edge 10 49
+edge 125 166
+edge 152 172
+edge 95 104
+edge 125 195
+edge 62 92
+edge 42 172
+edge 18 143
+edge 165 184
+edge 102 172
+edge 65 163
+edge 13 65
+edge 56 163
+edge 144 172
+edge 2 172
+edge 56 172
+edge 44 172
+edge 109 172
+edge 81 172
+edge 10 98
+edge 30 107
+edge 30 40
+edge 21 146
+edge 93 172
+edge 89 90
+edge 114 172
+edge 1 159
+edge 39 67
+edge 54 172
+edge 162 172
+edge 92 100
+edge 172 173
+edge 37 172
+edge 74 172
+edge 63 160
+edge 58 160
+edge 100 162
+edge 116 172
+edge 101 172
+edge 35 172
+edge 146 172
+edge 68 172
+edge 145 172
+edge 87 172
+edge 105 172
+edge 55 77
+edge 37 108
+edge 6 13
+edge 7 125
+edge 7 182
+edge 165 172
+edge 183 184
+edge 83 184
+edge 172 177
+edge 78 172
+edge 37 55
+edge 37 91
+edge 171 172
+edge 54 97
+edge 67 97
+edge 54 67
+edge 67 172
+edge 18 54
+edge 117 137
+edge 18 142
+edge 117 142
+edge 18 27
+edge 16 136
+edge 42 99
+edge 136 150
+edge 118 179
+edge 23 82
+edge 33 172
+edge 32 171
+edge 4 7
+edge 7 166
+edge 129 172
+edge 92 172
+edge 84 172
+edge 43 172
+edge 83 172
+edge 132 172
+edge 41 78
+edge 119 172
+edge 41 172
+edge 22 92
+edge 60 172
+edge 160 172
+edge 6 172
+edge 160 189
+edge 13 160
+edge 145 160
+edge 144 160
+edge 159 172
+edge 155 172
+edge 170 172
+edge 69 172
+edge 147 172
+edge 56 194
+edge 13 172
+edge 34 79
+edge 101 182
+edge 31 134
+edge 42 178
+edge 18 117
+edge 49 106
+edge 15 88
+edge 52 172
+edge 137 172
+edge 42 130
+edge 16 99
+edge 133 172
+edge 42 59
+edge 42 198
+edge 59 137
+edge 119 122
+edge 78 168
+edge 12 55
+edge 91 108
+edge 33 190
+edge 77 135
+edge 55 135
+edge 37 135
+edge 73 90
+edge 156 172
+edge 80 172
+edge 38 169
+edge 5 172
+edge 154 161
+edge 20 172
+edge 14 172
+edge 62 172
+edge 73 172
+edge 172 194
+edge 100 172
+edge 115 139
+edge 92 162
+edge 5 29
+edge 3 77
+edge 3 157
+edge 8 199
+edge 115 172
+edge 62 162
+edge 120 130
+edge 18 172
+edge 59 172
+edge 130 198
+edge 29 35
+edge 29 77
+edge 3 29
+edge 33 82
+edge 33 135
+edge 52 90
+edge 33 52
+edge 52 100
+edge 106 172
+edge 66 149
+edge 48 172
+edge 21 191
+edge 145 189
+edge 144 145
+edge 80 98
+edge 89 156
+edge 64 156
+edge 85 172
+edge 111 140
+edge 115 129
+edge 1 8
+edge 1 114
+edge 118 131
+edge 53 82
+edge 118 124
+edge 95 103
+edge 103 104
+edge 153 172
+edge 28 172
+edge 139 155
+edge 28 155
+edge 139 172
+edge 19 184
+edge 4 172
+edge 15 172
+edge 172 199
+edge 1 172
+edge 10 172
+edge 149 172
+edge 134 172
+edge 127 134
+edge 109 165
+edge 95 172
+edge 172 184
+edge 46 141
+edge 103 172
+edge 97 185
+edge 167 197
+edge 97 127
+edge 127 167
+edge 13 93
+edge 13 77
+edge 6 77
+edge 77 105
+edge 172 193
+edge 13 69
+edge 65 69
+edge 11 101
+edge 96 182
+edge 75 172
+edge 34 113
+edge 96 101
+edge 30 172
+edge 0 186
+edge 0 81
+edge 103 177
+edge 107 172
+edge 44 160
+edge 6 175
+edge 58 146
+edge 45 93
+edge 63 172
+edge 44 63
+edge 172 178
+edge 71 143
+edge 99 172
+edge 130 172
+edge 178 198
+edge 112 172
+edge 70 172
+edge 89 172
+edge 26 172
+edge 23 172
+edge 103 138
+edge 138 177
+edge 0 172
+edge 41 81
+edge 40 172
+edge 172 186
+edge 32 192
+edge 25 174
+edge 32 70
+edge 118 172
+edge 172 179
+edge 23 123
+edge 49 172
+edge 61 157
+edge 11 157
+edge 176 196
+edge 30 176
+edge 11 61
+edge 11 77
+edge 3 11
+edge 100 176
+edge 52 176
+edge 176 177
+edge 107 176
+edge 100 122
+edge 0 41
+edge 0 168
+edge 122 168
+edge 119 168
+edge 107 168
+edge 41 168
+edge 4 31
+edge 31 148
+edge 31 151
+edge 4 151
+edge 167 172
+edge 10 80
+edge 114 159
+edge 66 172
+edge 149 156
+edge 9 72
+edge 116 126
+edge 35 128
+edge 172 175
+edge 35 154
+edge 86 172
+edge 172 192
+edge 172 187
+edge 108 172
+edge 25 172
+edge 173 187
+edge 108 173
+edge 9 57
+edge 3 172
+edge 126 180
+edge 57 116
+edge 24 172
+edge 172 180
+edge 75 126
+edge 34 126
+edge 5 128
+edge 169 172
+edge 172 196
+edge 43 111
+edge 104 172
+edge 22 172
+edge 109 132
+edge 72 164
+edge 11 164
+edge 72 116
+edge 43 136
+edge 132 165
+edge 16 150
+edge 47 172
+edge 141 172
+edge 140 172
+edge 47 83
+edge 48 106
+edge 52 115
+edge 90 106
+edge 66 90
+edge 90 115
+edge 66 106
+edge 148 172
+edge 97 172
+edge 39 172
+edge 111 172
+edge 127 185
+edge 127 197
+edge 112 147
+edge 20 23
+edge 172 174
+edge 21 172
+edge 2 68
+edge 189 194
+edge 58 172
+edge 1 115
+edge 48 114
+edge 48 80
+edge 80 106
+edge 4 182
+edge 11 182
+edge 182 195
+edge 125 182
+edge 11 158
+edge 158 164
+edge 164 172
+edge 21 58
+edge 58 93
+edge 6 93
+edge 135 190
+edge 33 171
+edge 135 172
+edge 74 140
+edge 19 133
+edge 19 172
+edge 19 110
+edge 79 126
+edge 9 172
+edge 113 116
+edge 126 172
+edge 34 116
+edge 142 172
+edge 172 198
+edge 172 183
+edge 120 172
+edge 27 143
+edge 16 172
+edge 117 172
+edge 42 137
+edge 136 137
+edge 18 137
+edge 99 136
+edge 54 137
+edge 99 137
+edge 57 172
+edge 96 172
+edge 79 172
+edge 158 172
+edge 21 93
+edge 60 93
+edge 6 60
+edge 93 191
+edge 153 176
+edge 153 184
+edge 153 177
+edge 99 130
+edge 110 183
+edge 110 172
+edge 136 172
+edge 43 140
+edge 47 183
+edge 23 192
+edge 25 70
+edge 82 181
+edge 20 192
+edge 102 147
+edge 55 108
+edge 108 193
+edge 112 171
+edge 91 172
+edge 29 87
+edge 38 157
+edge 24 87
+edge 3 169
+edge 1 85
+edge 1 50
+edge 8 85
+edge 8 28
+edge 49 80
+edge 85 199
+edge 43 74
+edge 43 51
+edge 51 133
+edge 51 172
+edge 51 136
+edge 51 176
+edge 51 153
+edge 19 51
+edge 51 184
+edge 51 74
+edge 35 161
+edge 6 86
+edge 77 161
+edge 6 105
+edge 35 77
+edge 33 118
+edge 33 53
+edge 52 118
+edge 33 124
+edge 52 88
+edge 88 118
+edge 141 184
+edge 95 153
+edge 47 184
+edge 110 184
+edge 30 196
+edge 141 165
+edge 141 153
+edge 46 153
+edge 103 153
+edge 88 172
+edge 26 181
+edge 64 89
+edge 32 172
+edge 73 89
+edge 172 190
+edge 25 171
+edge 171 190
+edge 102 171
+edge 32 82
+edge 82 171
+edge 3 24
+edge 157 172
+edge 61 172
+edge 157 169
+edge 116 180
+edge 172 182
+edge 125 152
+edge 172 195
+edge 152 195
+edge 54 84
+edge 17 94
+edge 54 94
+edge 22 122
+edge 8 172
+edge 122 172
+edge 168 172
+edge 50 85
+edge 28 139
+edge 92 122
+edge 143 172
+edge 84 94
+edge 71 172
+edge 150 172
+edge 27 172
+edge 94 172
+edge 17 172
+edge 14 25
+edge 163 172
+edge 90 172
+edge 36 172
+edge 112 174
+edge 82 123
+edge 102 112
+edge 108 187
+edge 12 172
+edge 14 174
+edge 187 193
+edge 172 191
+edge 2 60
+edge 121 172
+edge 60 86
+edge 45 172
+edge 45 68
+edge 98 172
+edge 64 172
+edge 123 172
+edge 76 172
+edge 82 172
+edge 53 172
+edge 76 179
+edge 124 172
+edge 13 170
+edge 163 189
+edge 56 189
+edge 55 172
+edge 12 170
+edge 172 188
+edge 72 172
+edge 34 172
+edge 154 172
+edge 106 115
+edge 48 115
+edge 100 115
+edge 114 115
+edge 8 115
+edge 100 129
+edge 36 124
+edge 124 131
+edge 23 32
+edge 26 53
+edge 26 82
+edge 61 180
+edge 11 116
+edge 9 116
+edge 61 116
+edge 116 164
+edge 36 131
+edge 66 156
+edge 76 118
+edge 131 179
+edge 131 172
+edge 90 156
+edge 13 55
+edge 13 163
+edge 12 13
+edge 55 193
+edge 13 58
+edge 13 189
+edge 31 172
+edge 127 172
+edge 38 172
+edge 24 188
+edge 3 188
+edge 75 180
+edge 77 172
+edge 121 175
+edge 60 68
+edge 105 121
+edge 29 172
+edge 6 121
+edge 134 167
+edge 54 134
+edge 97 134
+edge 134 148
+edge 4 134
+edge 172 197
+edge 172 181
+edge 113 172
+edge 166 172
+edge 138 172
+edge 7 172
+edge 172 185
+edge 151 172
+

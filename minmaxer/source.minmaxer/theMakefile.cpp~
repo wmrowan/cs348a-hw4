@@ -1,0 +1,59 @@
+# 1 "theMakefile"
+
+SOURCE = ../source.triangulation
+
+
+
+
+
+
+
+
+MACHINE_TYPE = sgi
+
+RMEXECUTABLE = if (-e minmaxer) rm minmaxer;
+
+# 22 "theMakefile"
+
+
+
+
+
+
+INCLUDE = -I$(SOURCE) -I/usr/class/cs348a/pp/forms/FORMS/
+DEBUG = -O
+CFLAGS = -cckr -signed
+
+LIB =  -lforms -lfm -lgl  -lm
+LIBDIR = -L/usr/class/cs348a/pp/forms/FORMS
+
+# 43 "theMakefile"
+
+
+CC = cc $(CFLAGS) $(DEBUG)  $(INCLUDE) -o $@
+
+.SUFFIXES: .$(OBJECT) $(SUFFIXES)
+.c.$(OBJECT): 
+	$(CC)
+
+
+
+
+VISUALOBJ = sgivisual.o sgimenu.o sgivislib.o trackball.o vect.o sgiformsmenu.o sgirender.o
+# 57 "theMakefile"
+
+
+TRIANGULATIONMINIMUMOBJ = $(SOURCE)/novisual.o $(SOURCE)/queue.o $(SOURCE)/heap.o $(SOURCE)/stack.o $(SOURCE)/timer.o $(SOURCE)/bitvector.o $(SOURCE)/file_io.o $(SOURCE)/quicksort.o $(SOURCE)/longmath.o $(SOURCE)/graph.o $(SOURCE)/quadedge.o $(SOURCE)/triangulation.o
+
+ALLTRIOBJ = $(SOURCE)/sos.o $(SOURCE)/planesweep.o $(SOURCE)/flips.o $(SOURCE)/delaunay.o $(SOURCE)/persistent.quadedge.o $(SOURCE)/hdag.o $(SOURCE)/regular.o $(SOURCE)/edgeinsert.o $(SOURCE)/heuristic.angle.o $(SOURCE)/angle.o $(SOURCE)/heuristic.slope.o $(SOURCE)/slope.o $(SOURCE)/heuristic.height.o $(SOURCE)/height.o
+
+MINMAXEROBJ = $(TRIANGULATIONMINIMUMOBJ) $(ALLTRIOBJ) $(VISUALOBJ) support.o minmaxer.o
+
+minmaxer: $(MINMAXEROBJ) Makefile
+	cc  $(DEBUG) -o minmaxer $(LIBDIR) $(MINMAXEROBJ) $(LIB)
+
+
+
+
+
+
