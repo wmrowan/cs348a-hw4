@@ -5,6 +5,7 @@
 #include <limits.h>
 #include <assert.h>
 #include <list>
+#include <math.h>
 
 #define INITIAL_WINDOW_SIZE (400)
 
@@ -12,12 +13,78 @@
 #define MIN(X,Y) (X < Y ? X : Y)
 #define AVG(X,Y) ((X + Y) / 2.0)
 
+void checkError() {
+    GLenum err = glGetError();
+    if(err != GL_NO_ERROR) {
+        std::cerr << gluErrorString(err) << std::endl;
+    }
+}
+
 struct Point {
     GLfloat vs[0];
     GLfloat x;
     GLfloat y;
     GLfloat z;
+
+    GLfloat dist(Point &other) {
+        return sqrt(pow(other.x-x,2)+pow(other.y-y,2)+pow(other.z-z,2));
+    }
 };
+
+struct Vector {
+    GLfloat vs[0];
+    GLfloat x;
+    GLfloat y;
+    GLfloat z;
+
+    void normalize() {
+        GLfloat length = sqrt(pow(x,2)+pow(y,2)+pow(z,2));
+        x /= length;
+        y /= length;
+        z /= length;
+    }
+
+    bool operator==(Vector &other) {
+        // Assumes vectors are normalized
+        return (x == other.x) && (y == other.y) && (z == other.z);
+    }
+};
+
+struct Line {
+    Point p;
+    Vector v;
+
+    Line(Point p_, Vector v_) : p(p_), v(v_) {}
+};
+
+Vector operator-(Point &one, Point &two) {
+    Vector r;
+    r.x = one.x - two.x;
+    r.y = one.y - two.y;
+    r.z = one.z - two.z;
+    r.normalize();
+
+    return r;
+}
+
+Vector cross(Vector &one, Vector &two) {
+    Vector r;
+    r.x = one.y * two.z - one.z * two.y;
+    r.y = one.z * two.x - one.x * two.z;
+    r.z = one.x * two.y - one.y * two.x;
+    r.normalize();
+
+    return r;
+}
+
+Point intersect(Line &one, Line &two) {
+    // TODO actually compute intersection
+    Point pt;
+    pt.x = 1.0;
+    pt.y = 1.0;
+    pt.z = 1.0;
+    return pt;
+}
 
 class BezierCurve {
 private:
@@ -68,6 +135,34 @@ public:
         glEnd();
     }
 
+    GLfloat length() {
+        Point last = evaluate(0.0);
+        GLfloat l = 0.0;
+        for(GLfloat t = step_size; t < 1.0; t += step_size) {
+            Point cur = evaluate(t);
+            l += cur.dist(last);
+            last = cur;
+        }
+
+        return l;
+    }
+
+    GLfloat maxCurvature() {
+        GLfloat max_curvature = 0.0;
+
+        Point one = evaluate(0.0);
+        Point two = evaluate(step_size);
+        for(GLfloat t = 2*step_size; t < 1.0; t += step_size) {
+            Point three = evaluate(t);
+             
+            GLfloat curvature = findCurvature(one, two, three);
+            max_curvature = MAX(max_curvature, curvature);
+
+            one = two;
+            two = three;
+        }
+    }
+
 private:
     
     Point lerp(Point &one, Point &two, GLfloat t) {
@@ -87,6 +182,22 @@ private:
         return (t*one + (1.0-t)*two);
     }
 
+    GLfloat findCurvature(Point &one, Point &two, Point &three) {
+        Point mpt1 = lerp(one, two, 0.5);
+        Vector a = two - mpt1;
+        Vector b = three - mpt1;
+        Vector vert = cross(a,b);
+        Vector ortho1 = cross(vert, a);
+
+        Point mpt2 = lerp(two, three, 0.5);
+        a = two - mpt2;
+        b = three - mpt2;
+        vert = cross(a,b);
+        Vector ortho2 = cross(vert, a);
+
+        return 0.0;
+    }
+
 };
 
 class Spline {
@@ -104,9 +215,31 @@ public:
             bc.setCtrlPoint(1, last);
             bc.setCtrlPoint(2, pt);
             bc.setCtrlPoint(3, pt);
+
+            list.push_back(bc);
         }
 
         last = pt;
+    }
+
+    GLfloat length() {
+        GLfloat l = 0.0;
+        for(std::list<BezierCurve>::iterator iter = list.begin();
+                iter != list.end(); ++iter) {
+            l += iter->length();
+        }
+
+        return l;
+    }
+
+    GLfloat maxCurvature() {
+        GLfloat max_curvature = 0.0;
+        for(std::list<BezierCurve>::iterator iter = list.begin();
+                iter != list.end(); ++iter) {
+            max_curvature = MAX(max_curvature, iter->maxCurvature());
+        }
+
+        return max_curvature;
     }
 
     void draw() {
@@ -226,10 +359,8 @@ public:
 
     void setElevationColor(GLfloat elevation) {
         GLfloat relative_height = (elevation - min_coords.z) / (max_coords.z - min_coords.z);
-        GLfloat scale = 0.8 - (0.4*relative_height);
+        GLfloat scale = 0.6 - (0.6*relative_height);
         glColor3f(scale,0.8,scale);
-
-        glColor3f(0.4,0.6,0.4);
     }
 
     Point getMaxCoords() {
@@ -268,6 +399,9 @@ public:
         gluLookAt(pos.x, pos.y, pos.z,
                   look.x,look.y,look.z,
                   0,1,0);
+
+        //glTranslatef(0, 0, -60000);
+        checkError();
     }
 
     void moveTo(GLfloat x, GLfloat y, GLfloat z) {
@@ -296,9 +430,10 @@ public:
 private:
     void update() {
         glViewport(0,0, window_width, window_height);
-        glMatrixMode(GL_PROJECTION_MATRIX);
+        glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
         gluPerspective(45.0, aspect_ratio, close, far);
+        checkError();
     }
 };
 
@@ -309,10 +444,7 @@ BezierCurve curve;
 void draw() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     camera.draw();
-    //terrain.draw();
-
-    curve.draw();
-
+    terrain.draw();
     glutSwapBuffers();
 }
 
@@ -356,11 +488,12 @@ void usage() {
 }
 
 int main(int argc, char **argv) {
-    //if(argc < 2 || !terrain.init(argv[1])) usage();
+    if(argc < 2 || !terrain.init(argv[1])) usage();
     glInit(&argc, argv);
 
-    camera.moveTo(0.5, 0.5, -1.0);
-    camera.lookAt(0.5, 0.5, 0.0);
+    camera.moveTo(0, 0, 60000.0);
+    camera.lookAt(0.0, 0.0, 0.0);
+    camera.setClip(1, 10000000);
 
     glutMainLoop();
     return 0;
