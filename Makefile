@@ -5,9 +5,6 @@ CC = g++ $< $(CPPOPTS) $(LIB) -o $@
 tour: tour.cpp
 	$(CC)
 
-run: tour
-	./tour test.tri
-
 tags:
 	ctags -R .
 

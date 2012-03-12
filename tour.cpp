@@ -3,15 +3,96 @@
 #include <fstream>
 #include <GL/glut.h>
 #include <limits.h>
+#include <assert.h>
+
+#define INITIAL_WINDOW_SIZE (400)
 
 #define MAX(X,Y) (X > Y ? X : Y)
 #define MIN(X,Y) (X < Y ? X : Y)
+#define AVG(X,Y) ((X + Y) / 2.0)
 
 struct Point {
     GLfloat vs[0];
     GLfloat x;
     GLfloat y;
     GLfloat z;
+};
+
+class BezierCurve {
+private:
+    Point ctrlpts[4];
+    GLfloat step_size;
+
+public:
+    BezierCurve() : step_size(0.01) {
+        Point p;
+        p.x = 0.0;
+        p.y = 0.0;
+        p.z = 0.0;
+
+        setCtrlPoint(0, p);
+        p.y = 1.0;
+        setCtrlPoint(1, p);
+        p.x = 1.0;
+        setCtrlPoint(2, p);
+        p.y = 0.0;
+        setCtrlPoint(3, p);
+    }
+
+    void setCtrlPoint(int index, Point val) {
+        ctrlpts[index] = val;
+    }
+
+    Point evaluate(GLfloat t) {
+        assert(t >= 0.0 && t <= 1.0);
+
+        Point seg1a = lerp(ctrlpts[0], ctrlpts[1], t);
+        Point seg1b = lerp(ctrlpts[1], ctrlpts[2], t);
+        Point seg1c = lerp(ctrlpts[2], ctrlpts[3], t);
+
+        Point seg2a = lerp(seg1a, seg1b, t);
+        Point seg2b = lerp(seg1b, seg1c, t);
+
+        Point seg3a = lerp(seg2a, seg2b, t);
+
+        return seg3a;
+    }
+
+    void draw() {
+        glBegin(GL_LINE_STRIP);
+        glColor3f(0.0, 0.0, 0.0);
+        for(GLfloat t = 0.0; t < 1.0; t += step_size) {
+            glVertex3fv(evaluate(t).vs);
+        }
+        glEnd();
+    }
+
+private:
+    
+    Point lerp(Point &one, Point &two, GLfloat t) {
+        assert(t >= 0.0 && t <= 1.0);
+
+        Point pt;
+
+        pt.x = lerp(one.x, two.x, t);
+        pt.y = lerp(one.y, two.y, t);
+        pt.z = lerp(one.z, two.z, t);
+
+        return pt;
+    }
+
+    GLfloat lerp(GLfloat one, GLfloat two, GLfloat t) {
+        assert(t >= 0.0 && t <= 1.0);
+        return (t*one + (1.0-t)*two);
+    }
+
+};
+
+class Spline {
+private:
+
+public:
+    Spline() { }
 };
 
 class Terrain {
@@ -80,29 +161,29 @@ public:
 
         // Now compute the max and min elevations which we'll need for our terrain shading
         max_coords.x = INT_MIN;
-	max_coords.y = INT_MIN;
-	max_coords.z = INT_MIN;
+        max_coords.y = INT_MIN;
+        max_coords.z = INT_MIN;
         min_coords.x = INT_MAX;
-	min_coords.y = INT_MAX;
-	min_coords.z = INT_MAX;
+        min_coords.y = INT_MAX;
+        min_coords.z = INT_MAX;
 
         for(int i = 0; i < n_triangles; ++i) {
-	    if(triangles[i].maxX() > max_coords.x)
-	        max_coords.x = triangles[i].maxX();
-	    if(triangles[i].minX() < min_coords.x)
-	        min_coords.x = triangles[i].minX();
-	    if(triangles[i].maxY() > max_coords.y)
-	        max_coords.y = triangles[i].maxY();
-	    if(triangles[i].minY() < min_coords.y)
-	        min_coords.y = triangles[i].minY();
-            if(triangles[i].maxZ() > max_coords.z)
-	        max_coords.z = triangles[i].maxZ();
-            if(triangles[i].minZ() < min_coords.z)
-	        min_coords.z = triangles[i].minZ();
-	}
+            if(triangles[i].maxX() > max_coords.x)
+                max_coords.x = triangles[i].maxX();
+            if(triangles[i].minX() < min_coords.x)
+                min_coords.x = triangles[i].minX();
+            if(triangles[i].maxY() > max_coords.y)
+                max_coords.y = triangles[i].maxY();
+            if(triangles[i].minY() < min_coords.y)
+                min_coords.y = triangles[i].minY();
+                if(triangles[i].maxZ() > max_coords.z)
+                max_coords.z = triangles[i].maxZ();
+                if(triangles[i].minZ() < min_coords.z)
+                min_coords.z = triangles[i].minZ();
+	    }
 
-	Point minCoords = getMinCoords();
-	Point maxCoords = getMaxCoords();
+        Point minCoords = getMinCoords();
+        Point maxCoords = getMaxCoords();
 
         return true;
     }
@@ -125,6 +206,8 @@ public:
         GLfloat relative_height = (elevation - min_coords.z) / (max_coords.z - min_coords.z);
         GLfloat scale = 0.8 - (0.4*relative_height);
         glColor3f(scale,0.8,scale);
+
+        glColor3f(0.4,0.6,0.4);
     }
 
     Point getMaxCoords() {
@@ -134,6 +217,7 @@ public:
     Point getMinCoords() {
         return min_coords; 
     }
+
 };
 
 
@@ -143,14 +227,20 @@ private:
     Point look;
     GLfloat close;
     GLfloat far;
+    int window_width;
+    int window_height;
+    GLfloat aspect_ratio;
+
 public:
-    Camera() : pos() {
-        glMatrixMode(GL_PROJECTION_MATRIX);
-        glLoadIdentity();
+    Camera() :  pos(), look(), close(0.01), far(100),
+                window_width(INITIAL_WINDOW_SIZE),
+                window_height(INITIAL_WINDOW_SIZE),
+                aspect_ratio((GLfloat)window_width / (GLfloat)window_height)
+    {
+        update();
     }
 
     void draw() {
-        gluPerspective(45.0, 1, close,far ); 
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
         gluLookAt(pos.x, pos.y, pos.z,
@@ -165,24 +255,41 @@ public:
     }
     
     void lookAt(GLfloat x, GLfloat y, GLfloat z) {
-      look.x = x;
-      look.y = y;
-      look.z = z;
+        look.x = x;
+        look.y = y;
+        look.z = z;
     }
 
     void setClip(GLfloat min, GLfloat max) {
-      close = min;
-      far = max;
+        close = min;
+        far = max;
+    }
+
+    void reshape(int new_width, int new_height) {
+        window_width = new_width;
+        window_height = new_height;
+        update();
+    }
+
+private:
+    void update() {
+        glViewport(0,0, window_width, window_height);
+        glMatrixMode(GL_PROJECTION_MATRIX);
+        glLoadIdentity();
+        gluPerspective(45.0, aspect_ratio, close, far);
     }
 };
 
 Terrain terrain;
 Camera camera;
+BezierCurve curve;
 
 void draw() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     camera.draw();
-    terrain.draw();
+    //terrain.draw();
+
+    curve.draw();
 
     glutSwapBuffers();
 }
@@ -193,30 +300,32 @@ void key(unsigned char k, int x, int y) {
     }
 }
 
-GLfloat AVG(GLfloat x, GLfloat y) {
-  return (x+y)/2.0;
+void reshape(int width, int height) {
+    camera.reshape(width, height);
 }
+
 void glInit(int *argc, char **argv) {
     glutInit(argc, argv);
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
-    glutInitWindowSize(400,400);
+    glutInitWindowSize(INITIAL_WINDOW_SIZE,INITIAL_WINDOW_SIZE);
     glutInitWindowPosition(40,40);
     glutCreateWindow("Terrain");
     glClearColor(0.795, 0.795, 0.795, 0.0);
     glutDisplayFunc(draw);
     glutKeyboardFunc(key);
+    glutReshapeFunc(reshape);
 
-    
     Point max = terrain.getMaxCoords();
     Point min = terrain.getMinCoords();
+
     // TODO find real values for this
     //attempting to adjust camera
-    camera.moveTo(AVG(max.x,min.x),AVG(max.y,min.y),min.z+1);
-    camera.lookAt(AVG(max.x,min.x),AVG(max.y,min.y),AVG(max.z,min.z));
-    camera.setClip(min.z, max.z+1);
-    printf("%f %f %f\n", min.x, min.y, min.z);
-    printf("%f %f %f\n",AVG(max.x,min.x),AVG(max.y,min.y),AVG(max.z,min.z));
-    printf("%f %f %f\n",max.x, max.y, max.z);
+    //camera.moveTo(AVG(max.x,min.x),AVG(max.y,min.y),min.z+1);
+    //camera.lookAt(AVG(max.x,min.x),AVG(max.y,min.y),AVG(max.z,min.z));
+    //camera.setClip(0.8*min.z, 1.2*max.z);
+    //printf("%f %f %f\n", min.x, min.y, min.z);
+    //printf("%f %f %f\n",AVG(max.x,min.x),AVG(max.y,min.y),AVG(max.z,min.z));
+    //printf("%f %f %f\n",max.x, max.y, max.z);
 }
 
 void usage() {
@@ -225,8 +334,11 @@ void usage() {
 }
 
 int main(int argc, char **argv) {
-    if(argc < 2 || !terrain.init(argv[1])) usage();
+    //if(argc < 2 || !terrain.init(argv[1])) usage();
     glInit(&argc, argv);
+
+    camera.moveTo(0.5, 0.5, -1.0);
+    camera.lookAt(0.5, 0.5, 0.0);
 
     glutMainLoop();
     return 0;
