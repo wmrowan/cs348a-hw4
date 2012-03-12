@@ -1,0 +1,13 @@
+#/bin/bash
+
+## Runs our custom minmaxer to produce the right format for the data
+if [ ! -e regular.tri ]
+then 
+    echo "Running minmaxer..."
+    echo "9" | ./minmaxer/source.minmaxer/minmaxer finalData/hw4.heights > /dev/null
+    rm regular.edges
+    echo "done"
+fi
+
+## Then calls our tour executable giving the data
+./tour regular.tri

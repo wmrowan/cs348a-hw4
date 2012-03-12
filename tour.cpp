@@ -8,10 +8,10 @@
 #define MIN(X,Y) (X < Y ? X : Y)
 
 struct Point {
-        GLfloat vs[0];
-        GLfloat x;
-        GLfloat y;
-        GLfloat z;
+    GLfloat vs[0];
+    GLfloat x;
+    GLfloat y;
+    GLfloat z;
 };
 
 class Terrain {
