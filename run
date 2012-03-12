@@ -1,4 +1,4 @@
-#/bin/bash
+#/bin/sh
 
 ## Runs our custom minmaxer to produce the right format for the data
 if [ ! -e regular.tri ]
