@@ -4,6 +4,7 @@
 #include <GL/glut.h>
 #include <limits.h>
 #include <assert.h>
+#include <list>
 
 #define INITIAL_WINDOW_SIZE (400)
 
@@ -90,9 +91,30 @@ private:
 
 class Spline {
 private:
+    std::list<BezierCurve> list;
+    Point last;
 
 public:
-    Spline() { }
+    Spline() : list() { }
+
+    void addPoint(Point &pt) {
+        if(!list.empty()) {
+            BezierCurve bc;
+            bc.setCtrlPoint(0, last);
+            bc.setCtrlPoint(1, last);
+            bc.setCtrlPoint(2, pt);
+            bc.setCtrlPoint(3, pt);
+        }
+
+        last = pt;
+    }
+
+    void draw() {
+        for(std::list<BezierCurve>::iterator iter = list.begin();
+                iter != list.end(); ++iter) {
+            iter->draw();
+        }
+    }
 };
 
 class Terrain {
