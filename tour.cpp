@@ -12,6 +12,9 @@
 #define MAX(X,Y) (X > Y ? X : Y)
 #define MIN(X,Y) (X < Y ? X : Y)
 #define AVG(X,Y) ((X + Y) / 2.0)
+#define NUM_GRADIENTS 8
+
+
 
 void checkError() {
     GLenum err = glGetError();
@@ -289,6 +292,7 @@ private:
     Point min_coords;
     Triangle *triangles;
 
+
 public:
     Terrain() : n_triangles(0), triangles(NULL) {}
 
@@ -324,16 +328,16 @@ public:
 
         for(int i = 0; i < n_triangles; ++i) {
             if(triangles[i].maxX() > max_coords.x)
-                max_coords.x = triangles[i].maxX();
+              max_coords.x = triangles[i].maxX();
             if(triangles[i].minX() < min_coords.x)
                 min_coords.x = triangles[i].minX();
             if(triangles[i].maxY() > max_coords.y)
                 max_coords.y = triangles[i].maxY();
             if(triangles[i].minY() < min_coords.y)
                 min_coords.y = triangles[i].minY();
-                if(triangles[i].maxZ() > max_coords.z)
+            if(triangles[i].maxZ() > max_coords.z)
                 max_coords.z = triangles[i].maxZ();
-                if(triangles[i].minZ() < min_coords.z)
+            if(triangles[i].minZ() < min_coords.z)
                 min_coords.z = triangles[i].minZ();
 	    }
 
@@ -347,7 +351,7 @@ public:
         glPushMatrix();
         glBegin(GL_TRIANGLES);
         for(int i = 0; i < n_triangles; ++i) {
-            GLfloat elevation = triangles[i].maxZ();
+            GLfloat elevation = (triangles[i].maxZ()+triangles[i].minZ())/2.;
             setElevationColor(elevation);
             glVertex3fv((GLfloat *)&triangles[i].v1.vs);
             glVertex3fv((GLfloat *)&triangles[i].v2.vs);
@@ -358,9 +362,31 @@ public:
     }
 
     void setElevationColor(GLfloat elevation) {
+        GLfloat gradient[8][4] = {-1.,0.,0.,.5,
+                                  -.2,1.,0.,1.,
+                                  -0.4,0.,.5,1.,
+                                  -.6,.94,.94,.25,
+                                  -.8,.125,.625,0.,
+                                  .0,.875,.875,0.,
+                                  .5, .5,.5,.5,
+                                  1.,1.,1.,1.};
         GLfloat relative_height = (elevation - min_coords.z) / (max_coords.z - min_coords.z);
-        GLfloat scale = 0.6 - (0.6*relative_height);
-        glColor3f(scale,0.8,scale);
+        GLfloat scale = (2.0*relative_height)-1.;
+        
+        int gradientIndex = 0;
+        for(int i = 0; i < NUM_GRADIENTS; i++) {
+            if(scale <= gradient[i][0]) {
+                scale = (scale - gradient[i][0])/(gradient[i][0]-gradient[i-1][0]);
+                scale = fabs(scale);
+                gradientIndex = i;
+                break;
+            }
+        }
+        glColor3f( ((gradient[gradientIndex][1]+gradient[gradientIndex-1][1])/2.)*scale,
+                   ((gradient[gradientIndex][2]+gradient[gradientIndex-1][2])/2.)*scale,
+                   ((gradient[gradientIndex][3]+gradient[gradientIndex-1][3])/2.)*scale);
+
+       // glColor3f(0.4,0.6,0.4);
     }
 
     Point getMaxCoords() {
@@ -398,16 +424,16 @@ public:
         glLoadIdentity();
         gluLookAt(pos.x, pos.y, pos.z,
                   look.x,look.y,look.z,
-                  0,1,0);
+                  0,0,1);
 
         //glTranslatef(0, 0, -60000);
         checkError();
     }
 
     void moveTo(GLfloat x, GLfloat y, GLfloat z) {
-        pos.x = x;
-        pos.y = y;
-        pos.z = z;
+        pos.x += x;
+        pos.y += y;
+        pos.z += z;
     }
     
     void lookAt(GLfloat x, GLfloat y, GLfloat z) {
@@ -445,12 +471,42 @@ void draw() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     camera.draw();
     terrain.draw();
+   // curve.draw();
     glutSwapBuffers();
 }
 
 void key(unsigned char k, int x, int y) {
-    if(k = 'q') {
-        exit(0);
+    float scale = 1000;
+    switch(k) {
+        case 'q':
+            exit(0);
+            break;
+        case 'w':
+            camera.moveTo(0.,0.,scale);
+            glutPostRedisplay();
+            break;
+        case 's':
+            camera.moveTo(0.,0.,-1*scale);
+            glutPostRedisplay();
+            break;
+        case 'a':
+            camera.moveTo(-1*scale,0.,0.);
+            glutPostRedisplay();
+            break;
+        case 'd':
+            camera.moveTo(scale,0.,0.);
+            glutPostRedisplay();
+            break;
+        case 'r':
+            camera.moveTo(0.,scale,.0);
+            glutPostRedisplay();
+            break;
+        case 'f':
+            camera.moveTo(0.,-1*scale,0.);
+            glutPostRedisplay();
+            break;
+        default:
+            break;
     }
 }
 
@@ -474,12 +530,14 @@ void glInit(int *argc, char **argv) {
 
     // TODO find real values for this
     //attempting to adjust camera
-    //camera.moveTo(AVG(max.x,min.x),AVG(max.y,min.y),min.z+1);
-    //camera.lookAt(AVG(max.x,min.x),AVG(max.y,min.y),AVG(max.z,min.z));
-    //camera.setClip(0.8*min.z, 1.2*max.z);
-    //printf("%f %f %f\n", min.x, min.y, min.z);
-    //printf("%f %f %f\n",AVG(max.x,min.x),AVG(max.y,min.y),AVG(max.z,min.z));
-    //printf("%f %f %f\n",max.x, max.y, max.z);
+    camera.moveTo(0.,100.,100000.);
+    camera.lookAt(0.,0.,0.);
+    camera.setClip(0.001*min.z, 2.*max.z);
+    
+    /*printf("%f %f %f\n", min.x, min.y, min.z);
+    printf("%f %f %f\n",AVG(max.x,min.x),AVG(max.y,min.y),AVG(max.z,min.z));
+    printf("%f %f %f\n",max.x, max.y, max.z);*/
+    
 }
 
 void usage() {
@@ -491,9 +549,9 @@ int main(int argc, char **argv) {
     if(argc < 2 || !terrain.init(argv[1])) usage();
     glInit(&argc, argv);
 
-    camera.moveTo(0, 0, 60000.0);
+    /*camera.moveTo(0, 0, 60000.0);
     camera.lookAt(0.0, 0.0, 0.0);
-    camera.setClip(1, 10000000);
+    camera.setClip(1, 10000000);*/
 
     glutMainLoop();
     return 0;
