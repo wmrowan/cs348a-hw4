@@ -22,6 +22,7 @@
 #include "quadedge.h"
 #include "graph.h"
 #include "triation.h"
+#include "triangulation.h"
 
 #define COMMENTCHAR '#'
 #define STRLEN 80
@@ -191,7 +192,7 @@ void writeGraph(fname, g, nofFlips, nofSuccFlips, runTime)
 {
   printf("writing graph");
   char fname2[100];
-  int i, j, k, l, v1, v2, qe, count, edges;
+  int i, j, k, qe;
   int triangle[3][3];
   FILE *fp, *fp2;
 /*  long clock;*/
@@ -229,6 +230,7 @@ void writeGraph(fname, g, nofFlips, nofSuccFlips, runTime)
   (void) fprintf(fp, "\n");
 */
   /* write out sites (vertices) */
+  fprintf(fp, "%d\n", NOS(g));
   if (NOS(g)) {
     (void) fprintf(fp, "# site x y z index\n");
     for (i=0; i< NOS(g); i++) {
@@ -289,67 +291,22 @@ fprintf(fp, "000 ");*/
     ".\n\n" /* ctime(&clock) */);
 
 
-  /* write triangle information into fp2*/
-  if (NE(g)) {
-    count = 0;
-    //first loop counts the number of triangles.
-    for(k=0; k<2; k++) {
-      if( k == 1) {
-      //write down number of triangles on first line.
-        (void) fprintf(fp2, "%d", count);
-        (void) fprintf(fp2, "\n");
-      }
-      //iterate through every quad edge
-      for (i=0; i< NE(g); i++) {
-        qe = MAKEQE(i);
-        edges = 1;
-        //find the vertices of the left triangle of the quad edge
-        for(l=0; l<2; l++) {
-          for(j=0; j<3; j++) {
-            triangle[j][0] = SITEX(g, SITEP(g, SITEN(g, ORG(g,qe))));
-            triangle[j][1] = SITEY(g, SITEP(g, SITEN(g, ORG(g,qe))));
-            triangle[j][2] = SITEZ(g, SITEP(g, SITEN(g, ORG(g,qe))));
-            if(l==0) {
-              qe = LNEXT(g,qe);
-            } else {
-              qe = RNEXT(g,qe);
-            }
-          }
-          //check that the vertices form a triangle
-          for(j=0; j<3; j++){
-            v1 = 0;
-            v2 = 1;
-            if(j == 1) {
-              v2 = 2;
-            } else if(j == 2) {
-              v1 = 1;
-              v2 = 2;
-            }
-            if(triangle[v1][0] != triangle[v2][0] && triangle[v1][1] !=
-              triangle[v2][1] && triangle[v1][1] != triangle[v2][2]) {
-              edges = 1;
-            } 
-          }
-          //if we have a triangle and have already counted triangles
-          //write down the vertices of the confirmed triangle
-          if(k && edges) {
-            for(j=0; j<3; j++) {
-            (void) fprintf(fp2, fmtxyz, triangle[j][0], triangle[j][1], triangle[j][2]);
-            (void) fprintf(fp2, "\n");
-            }
-          } else {
-            //if we are still counting and got a triangle
-            if(!k && edges) {
-            count = count+1;
-            }
-          }
-        }
-      }
+  triangleList* tl;
+  int* tri;
+  copyGraphToListOfTriangles ((char*)g, &tl);
+  (void) fprintf(fp2, "%d\n", tl->nofTriangles);
+  for(j=0; j<tl->nofTriangles;j++) {
+    tri = tl->v[j];
+    for(k=0;k<3;k++) {
+      (void) fprintf(fp2, fmtxyz, SITEX(g,SITEP(g,tri[k])), SITEY(g,SITEP(g,tri[k])), SITEZ(g,SITEP(g,tri[k])));
+      (void) fprintf(fp2, "\n");
     }
   }
+
+  }
   /* close output file2 */
-  if (fclose(fp2) == EOF) (void)
-    fprintf(ERRFILE, "writeGraph: could not close file \"%s\".\n", fname2);
+  if (fclose(fp2) == EOF) {
+    (void) fprintf(ERRFILE, "writeGraph: could not close file \"%s\".\n", fname2);
   }
 }  /* -------------------- writeGraph -------------------- */
 
