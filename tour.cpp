@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <list>
 #include <math.h>
+#include <vector>
 
 #define INITIAL_WINDOW_SIZE (400)
 
@@ -14,7 +15,7 @@
 #define AVG(X,Y) ((X + Y) / 2.0)
 #define NUM_GRADIENTS 8
 
-
+using namespace std;
 
 void checkError() {
     GLenum err = glGetError();
@@ -253,6 +254,75 @@ public:
     }
 };
 
+class Tour {
+private:
+     int currSite;
+     float stepSize;
+     vector<Point> sites;
+
+public:
+    Tour(): stepSize(100), currSite(0) {}
+
+    bool init(char* file) {
+        if(!loadSites(file)) return false;
+
+        return true;
+    }
+
+    bool loadSites(char* file) {
+        int n_sites = 0;
+        Point p;
+        // Free any existing state from a previous initialization
+
+        std::ifstream in;
+        in.open(file);
+        while(!in.eof()) {
+            in >> p.x >> p.y >> p.z;
+            if(!in.fail())
+                 sites.push_back(p);
+        }
+        if(!sites.empty()) {
+            return true;
+        }
+        return false;
+    }
+
+    void printSites() {
+         for(int i =0; i < sites.size(); i++) {
+             printf("site: %f %f %f\n", sites[i].x, sites[i].y, sites[i].z);
+         }
+    }
+
+    Point getSite(int index) {
+        return sites[index];
+    }
+
+    float getStepSize() {
+        return stepSize;
+    }
+
+    void modifyStep(int x) {
+        stepSize += x;
+    }
+
+    int getCurrSite() {
+        return currSite;
+    }
+    
+    void nextSite() {
+        currSite += 1;
+    }
+
+    bool isEnd() { 
+        return (currSite == (sites.size()-1));
+    }
+    
+    void reset() {
+        currSite = 0;
+    }
+};
+
+
 class Terrain {
 private:
     struct Triangle {
@@ -288,6 +358,7 @@ private:
     };
 
     int n_triangles;
+    int n_sites;
     Point max_coords;
     Point min_coords;
     Triangle *triangles;
@@ -297,13 +368,10 @@ public:
     Terrain() : n_triangles(0), triangles(NULL) {}
 
     bool init(char *file) {
-
         // Free any existing state from a previous initialization
         if(triangles) free(triangles);
-
         std::ifstream in;
         in.open(file);
-
         // The total number of triangles will be the on the first line of the file
         in >> n_triangles;
         triangles = (Triangle*)malloc(sizeof(Triangle) * n_triangles);
@@ -343,7 +411,7 @@ public:
 
         Point minCoords = getMinCoords();
         Point maxCoords = getMaxCoords();
-
+        
         return true;
     }
 
@@ -363,12 +431,12 @@ public:
 
     void setElevationColor(GLfloat elevation) {
         GLfloat gradient[8][4] = {-1.,0.,0.,.5,
-                                  -.2,1.,0.,1.,
-                                  -0.4,0.,.5,1.,
-                                  -.6,.94,.94,.25,
-                                  -.8,.125,.625,0.,
-                                  .0,.875,.875,0.,
-                                  .5, .5,.5,.5,
+                                  -.25,0.,0.,1.,
+                                  0.0,0.,.5,1.,
+                                  .0625,.94,.94,.25,
+                                  .125,.125,.625,0.,
+                                  .375,.875,.875,0.,
+                                  .75, .5,.5,.5,
                                   1.,1.,1.,1.};
         GLfloat relative_height = (elevation - min_coords.z) / (max_coords.z - min_coords.z);
         GLfloat scale = (2.0*relative_height)-1.;
@@ -376,19 +444,21 @@ public:
         int gradientIndex = 0;
         for(int i = 0; i < NUM_GRADIENTS; i++) {
             if(scale <= gradient[i][0]) {
-                scale = (scale - gradient[i][0])/(gradient[i][0]-gradient[i-1][0]);
-                scale = fabs(scale);
+                scale = (scale - min_coords.z/max_coords.z-min_coords.z);
+                //scale = (scale - gradient[i][0])/(gradient[i][0]-gradient[i-1][0]);
+                //scale = fabs(scale);
                 gradientIndex = i;
                 break;
             }
         }
-        glColor3f( ((gradient[gradientIndex][1]+gradient[gradientIndex-1][1])/2.)*scale,
+        glColor3f(scale*.6, scale*.0, scale*.0);
+        /*glColor3f( ((gradient[gradientIndex][1]+gradient[gradientIndex-1][1])/2.)*scale,
                    ((gradient[gradientIndex][2]+gradient[gradientIndex-1][2])/2.)*scale,
                    ((gradient[gradientIndex][3]+gradient[gradientIndex-1][3])/2.)*scale);
-
+        */
        // glColor3f(0.4,0.6,0.4);
-    }
 
+    }
     Point getMaxCoords() {
         return max_coords;
     }
@@ -430,16 +500,68 @@ public:
         checkError();
     }
 
+    void move(Tour* tour) {
+        if(tour->isEnd()) {
+             tour->reset();
+             pos = tour->getSite(tour->getCurrSite());
+             look = tour->getSite(tour->getCurrSite() + 1);
+        }
+        int step = tour->getStepSize();
+        if(fabs(look.x - pos.x) > step) {
+            if(look.x - pos.x > 0) { 
+                pos.x += step;
+            } else {
+                pos.x -= step;
+            }
+        } else {
+            pos.x = look.x;
+        }
+        if(fabs(look.y - pos.y) > step) { 
+            if(look.y - pos.y > 0) { 
+                pos.y += step;
+            } else {
+                pos.y -= step;
+            }
+        } else {
+            pos.y = look.y;
+        }
+        if(fabs(look.z - pos.z) > step) { 
+             if(look.z - pos.z > 0) { 
+                pos.z += step;
+            } else {
+                pos.z -= step;
+            }
+        } else {
+            pos.z = look.z;
+        }
+        if(pos.x == look.x && pos.y == look.y && pos.z == look.z) {
+            tour->nextSite(); 
+            look = tour->getSite(tour->getCurrSite()+1);
+        }       
+    }
+
     void moveTo(GLfloat x, GLfloat y, GLfloat z) {
-        pos.x += x;
-        pos.y += y;
-        pos.z += z;
+        pos.x = x;
+        pos.y = y;
+        pos.z = z;
     }
     
     void lookAt(GLfloat x, GLfloat y, GLfloat z) {
         look.x = x;
         look.y = y;
         look.z = z;
+    }
+
+    void changePos(GLfloat x, GLfloat y, GLfloat z) {
+        pos.x += x;
+        pos.y += y;
+        pos.z += z;
+    }
+
+    void changeLook(GLfloat x, GLfloat y, GLfloat z) {
+        look.x += x;
+        look.y += y;
+        look.z += z;
     }
 
     void setClip(GLfloat min, GLfloat max) {
@@ -464,45 +586,100 @@ private:
 };
 
 Terrain terrain;
+Tour tour;
 Camera camera;
 BezierCurve curve;
+
+void DefineLight() {
+    GLfloat light0_ambient[]  = {0.2, 0.2, 0.2, 1.0};
+    GLfloat light0_position[] = {1., 1., 1.0, 0.0};
+    GLfloat light0_diffuse[]  = {.8, .8, .8, 1.0};
+
+    glLightfv(GL_LIGHT0, GL_AMBIENT, light0_ambient); 
+    glLightfv(GL_LIGHT0, GL_POSITION, light0_position);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, light0_diffuse); 
+
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+    glEnable(GL_LIGHT1);
+    glDepthFunc(GL_LESS);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_AUTO_NORMAL);
+}
+
+void DefineMaterial() {
+
+    GLfloat shininess[]    = {1.0};
+    GLfloat mat_ambient [] = {.2, 0.2, 0.2, 1.0};
+    GLfloat mat_specular[] = {.1, .1, .1, 1.0};
+    GLfloat mat_diffuse [] = {0.8, 0.8, 0.8, 1.0};
+
+    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, mat_specular);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, mat_diffuse);
+    glMaterialfv(GL_FRONT, GL_SHININESS, shininess);
+}
+
+
 
 void draw() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     camera.draw();
+    DefineLight();
+    DefineMaterial();
     terrain.draw();
    // curve.draw();
     glutSwapBuffers();
 }
 
 void key(unsigned char k, int x, int y) {
-    float scale = 1000;
+    float scaleX = 100;
+    float scaleY = 50;
+    float scaleZ = 200;
+    float stepChange = 1;
     switch(k) {
         case 'q':
             exit(0);
             break;
         case 'w':
-            camera.moveTo(0.,0.,scale);
+            camera.changePos(0.,0.,-scaleZ);
             glutPostRedisplay();
             break;
         case 's':
-            camera.moveTo(0.,0.,-1*scale);
+            camera.changePos(0.,0.,1*scaleZ);
             glutPostRedisplay();
             break;
         case 'a':
-            camera.moveTo(-1*scale,0.,0.);
+            camera.changePos(-1*scaleX,0.,0.);
             glutPostRedisplay();
             break;
         case 'd':
-            camera.moveTo(scale,0.,0.);
+            camera.changePos(scaleX,0.,0.);
+            glutPostRedisplay();
+            break;
+        case 'u':
+            camera.changePos(0.,scaleY,.0);
+            glutPostRedisplay();
+            break;
+        case 'j':
+            camera.changePos(0.,-1*scaleY,0.);
+            glutPostRedisplay();
+            break;
+        case '+':
+            tour.modifyStep(stepChange);
+            glutPostRedisplay();
+            break;
+        case '-':
+            tour.modifyStep(-1*stepChange);
+            glutPostRedisplay();
+            break;
+        case '/':
+            camera.move(&tour);
             glutPostRedisplay();
             break;
         case 'r':
-            camera.moveTo(0.,scale,.0);
-            glutPostRedisplay();
-            break;
-        case 'f':
-            camera.moveTo(0.,-1*scale,0.);
+            camera.moveTo(0,100,60000);
+            camera.lookAt(0,0,0);
             glutPostRedisplay();
             break;
         default:
@@ -524,31 +701,43 @@ void glInit(int *argc, char **argv) {
     glutDisplayFunc(draw);
     glutKeyboardFunc(key);
     glutReshapeFunc(reshape);
+    
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_COLOR_MATERIAL);
 
     Point max = terrain.getMaxCoords();
     Point min = terrain.getMinCoords();
 
     // TODO find real values for this
     //attempting to adjust camera
-    camera.moveTo(0.,100.,100000.);
-    camera.lookAt(0.,0.,0.);
+    
+    Point pos = tour.getSite(tour.getCurrSite());
+    Point look =  tour.getSite(tour.getCurrSite()+1);
+    camera.moveTo(pos.x,pos.y,pos.z);
+    camera.lookAt(look.x,look.y,look.z);
     camera.setClip(0.001*min.z, 2.*max.z);
     
-    /*printf("%f %f %f\n", min.x, min.y, min.z);
+    /*camera.moveTo(0.,100.,50000.);
+    camera.lookAt(0.,0.,0.);
+    camera.setClip(0.001*min.z, 2.*max.z);
+    */
+    printf("%f %f %f\n", min.x, min.y, min.z);
     printf("%f %f %f\n",AVG(max.x,min.x),AVG(max.y,min.y),AVG(max.z,min.z));
-    printf("%f %f %f\n",max.x, max.y, max.z);*/
+    printf("%f %f %f\n",max.x, max.y, max.z);
     
 }
 
 void usage() {
-    std::cout << "Usage ./tour terrain_data.tri" << std::endl;
+    std::cout << "Usage ./tour terrain_data.tri terrain_data.tour" << std::endl;
     exit(1);
 }
 
 int main(int argc, char **argv) {
-    if(argc < 2 || !terrain.init(argv[1])) usage();
+    if(argc < 3 || !terrain.init(argv[1]) || !tour.init(argv[2])) usage();
     glInit(&argc, argv);
-
+    tour.printSites();
     /*camera.moveTo(0, 0, 60000.0);
     camera.lookAt(0.0, 0.0, 0.0);
     camera.setClip(1, 10000000);*/
