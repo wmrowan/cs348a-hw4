@@ -8,7 +8,7 @@
 #include <math.h>
 #include <vector>
 
-#define INITIAL_WINDOW_SIZE (400)
+#define INITIAL_WINDOW_SIZE (800)
 
 #define MAX(X,Y) (X > Y ? X : Y)
 #define MIN(X,Y) (X < Y ? X : Y)
@@ -17,10 +17,14 @@
 
 using namespace std;
 
-void checkError() {
+#define checkError() (errFunc(__FILE__,__LINE__))
+
+void errFunc(const char *file, int line) {
+    return;
     GLenum err = glGetError();
     if(err != GL_NO_ERROR) {
-        std::cerr << gluErrorString(err) << std::endl;
+        std::cerr << file << ":" << line << " "
+                  << gluErrorString(err) << std::endl;
     }
 }
 
@@ -90,25 +94,42 @@ Point intersect(Line &one, Line &two) {
     return pt;
 }
 
-class BezierCurve {
+GLfloat lerp(GLfloat one, GLfloat two, GLfloat t) {
+    assert(t >= 0.0 && t <= 1.0);
+    return (t*one + (1.0-t)*two);
+}
+
+Point lerp(Point &one, Point &two, GLfloat t) {
+    assert(t >= 0.0 && t <= 1.0);
+
+    Point pt;
+
+    pt.x = lerp(one.x, two.x, t);
+    pt.y = lerp(one.y, two.y, t);
+    pt.z = lerp(one.z, two.z, t);
+
+    return pt;
+}
+
+class Parabola {
 private:
-    Point ctrlpts[4];
+    Point ctrlpts[3];
     GLfloat step_size;
 
 public:
-    BezierCurve() : step_size(0.01) {
+    Parabola() : step_size(0.01) {
         Point p;
         p.x = 0.0;
         p.y = 0.0;
         p.z = 0.0;
 
         setCtrlPoint(0, p);
-        p.y = 1.0;
+        p.y = 0.5;
+        p.x = 0.5;
         setCtrlPoint(1, p);
         p.x = 1.0;
+        p.y = 0;
         setCtrlPoint(2, p);
-        p.y = 0.0;
-        setCtrlPoint(3, p);
     }
 
     void setCtrlPoint(int index, Point val) {
@@ -120,18 +141,15 @@ public:
 
         Point seg1a = lerp(ctrlpts[0], ctrlpts[1], t);
         Point seg1b = lerp(ctrlpts[1], ctrlpts[2], t);
-        Point seg1c = lerp(ctrlpts[2], ctrlpts[3], t);
 
         Point seg2a = lerp(seg1a, seg1b, t);
-        Point seg2b = lerp(seg1b, seg1c, t);
 
-        Point seg3a = lerp(seg2a, seg2b, t);
-
-        return seg3a;
+        return seg2a;
     }
 
     void draw() {
         glBegin(GL_LINE_STRIP);
+        glLineWidth(100.0);
         glColor3f(0.0, 0.0, 0.0);
         for(GLfloat t = 0.0; t < 1.0; t += step_size) {
             glVertex3fv(evaluate(t).vs);
@@ -168,23 +186,6 @@ public:
     }
 
 private:
-    
-    Point lerp(Point &one, Point &two, GLfloat t) {
-        assert(t >= 0.0 && t <= 1.0);
-
-        Point pt;
-
-        pt.x = lerp(one.x, two.x, t);
-        pt.y = lerp(one.y, two.y, t);
-        pt.z = lerp(one.z, two.z, t);
-
-        return pt;
-    }
-
-    GLfloat lerp(GLfloat one, GLfloat two, GLfloat t) {
-        assert(t >= 0.0 && t <= 1.0);
-        return (t*one + (1.0-t)*two);
-    }
 
     GLfloat findCurvature(Point &one, Point &two, Point &three) {
         Point mpt1 = lerp(one, two, 0.5);
@@ -206,7 +207,7 @@ private:
 
 class Spline {
 private:
-    std::list<BezierCurve> list;
+    std::list<Parabola> list;
     Point last;
 
 public:
@@ -214,11 +215,10 @@ public:
 
     void addPoint(Point &pt) {
         if(!list.empty()) {
-            BezierCurve bc;
+            Parabola bc;
             bc.setCtrlPoint(0, last);
-            bc.setCtrlPoint(1, last);
+            bc.setCtrlPoint(1, lerp(last, pt, 0.5));
             bc.setCtrlPoint(2, pt);
-            bc.setCtrlPoint(3, pt);
 
             list.push_back(bc);
         }
@@ -228,7 +228,7 @@ public:
 
     GLfloat length() {
         GLfloat l = 0.0;
-        for(std::list<BezierCurve>::iterator iter = list.begin();
+        for(std::list<Parabola>::iterator iter = list.begin();
                 iter != list.end(); ++iter) {
             l += iter->length();
         }
@@ -238,7 +238,7 @@ public:
 
     GLfloat maxCurvature() {
         GLfloat max_curvature = 0.0;
-        for(std::list<BezierCurve>::iterator iter = list.begin();
+        for(std::list<Parabola>::iterator iter = list.begin();
                 iter != list.end(); ++iter) {
             max_curvature = MAX(max_curvature, iter->maxCurvature());
         }
@@ -247,7 +247,7 @@ public:
     }
 
     void draw() {
-        for(std::list<BezierCurve>::iterator iter = list.begin();
+        for(std::list<Parabola>::iterator iter = list.begin();
                 iter != list.end(); ++iter) {
             iter->draw();
         }
@@ -256,70 +256,37 @@ public:
 
 class Tour {
 private:
-     int currSite;
-     float stepSize;
+     Spline spline;
      vector<Point> sites;
 
 public:
-    Tour(): stepSize(100), currSite(0) {}
+    Tour() {}
 
     bool init(char* file) {
-        if(!loadSites(file)) return false;
-
-        return true;
-    }
-
-    bool loadSites(char* file) {
-        int n_sites = 0;
-        Point p;
-        // Free any existing state from a previous initialization
-
         std::ifstream in;
         in.open(file);
-        while(!in.eof()) {
+
+        Point p;
+        while(in.good()) {
             in >> p.x >> p.y >> p.z;
-            if(!in.fail())
-                 sites.push_back(p);
+            spline.addPoint(p);
+            sites.push_back(p);
         }
-        if(!sites.empty()) {
-            return true;
+
+        return in.eof();
+    }
+
+    void draw() {
+        //spline.draw();
+        glBegin(GL_LINE_STRIP);
+        glLineWidth(100.0);
+        for(std::vector<Point>::iterator iter = sites.begin();
+            iter != sites.end(); ++iter) {
+                glVertex3fv(iter->vs);
         }
-        return false;
+        glEnd();
     }
 
-    void printSites() {
-         for(int i =0; i < sites.size(); i++) {
-             printf("site: %f %f %f\n", sites[i].x, sites[i].y, sites[i].z);
-         }
-    }
-
-    Point getSite(int index) {
-        return sites[index];
-    }
-
-    float getStepSize() {
-        return stepSize;
-    }
-
-    void modifyStep(int x) {
-        stepSize += x;
-    }
-
-    int getCurrSite() {
-        return currSite;
-    }
-    
-    void nextSite() {
-        currSite += 1;
-    }
-
-    bool isEnd() { 
-        return (currSite == (sites.size()-1));
-    }
-    
-    void reset() {
-        currSite = 0;
-    }
 };
 
 
@@ -497,9 +464,9 @@ public:
                   0,0,1);
 
         //glTranslatef(0, 0, -60000);
-        checkError();
     }
 
+    /*
     void move(Tour* tour) {
         if(tour->isEnd()) {
              tour->reset();
@@ -539,6 +506,7 @@ public:
             look = tour->getSite(tour->getCurrSite()+1);
         }       
     }
+    */
 
     void moveTo(GLfloat x, GLfloat y, GLfloat z) {
         pos.x = x;
@@ -581,14 +549,12 @@ private:
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
         gluPerspective(45.0, aspect_ratio, close, far);
-        checkError();
     }
 };
 
 Terrain terrain;
 Tour tour;
 Camera camera;
-BezierCurve curve;
 
 void DefineLight() {
     GLfloat light0_ambient[]  = {0.2, 0.2, 0.2, 1.0};
@@ -628,7 +594,7 @@ void draw() {
     DefineLight();
     DefineMaterial();
     terrain.draw();
-   // curve.draw();
+    tour.draw();
     glutSwapBuffers();
 }
 
@@ -643,48 +609,39 @@ void key(unsigned char k, int x, int y) {
             break;
         case 'w':
             camera.changePos(0.,0.,-scaleZ);
-            glutPostRedisplay();
             break;
         case 's':
             camera.changePos(0.,0.,1*scaleZ);
-            glutPostRedisplay();
             break;
         case 'a':
             camera.changePos(-1*scaleX,0.,0.);
-            glutPostRedisplay();
             break;
         case 'd':
             camera.changePos(scaleX,0.,0.);
-            glutPostRedisplay();
             break;
         case 'u':
             camera.changePos(0.,scaleY,.0);
-            glutPostRedisplay();
             break;
         case 'j':
             camera.changePos(0.,-1*scaleY,0.);
-            glutPostRedisplay();
             break;
         case '+':
-            tour.modifyStep(stepChange);
-            glutPostRedisplay();
+            //tour.modifyStep(stepChange);
             break;
         case '-':
-            tour.modifyStep(-1*stepChange);
-            glutPostRedisplay();
+            //tour.modifyStep(-1*stepChange);
             break;
         case '/':
-            camera.move(&tour);
-            glutPostRedisplay();
+            //camera.move(&tour);
             break;
         case 'r':
             camera.moveTo(0,100,60000);
             camera.lookAt(0,0,0);
-            glutPostRedisplay();
             break;
         default:
             break;
     }
+    glutPostRedisplay();
 }
 
 void reshape(int width, int height) {
@@ -710,23 +667,14 @@ void glInit(int *argc, char **argv) {
     Point max = terrain.getMaxCoords();
     Point min = terrain.getMinCoords();
 
-    // TODO find real values for this
-    //attempting to adjust camera
-    
-    Point pos = tour.getSite(tour.getCurrSite());
-    Point look =  tour.getSite(tour.getCurrSite()+1);
-    camera.moveTo(pos.x,pos.y,pos.z);
-    camera.lookAt(look.x,look.y,look.z);
-    camera.setClip(0.001*min.z, 2.*max.z);
-    
-    /*camera.moveTo(0.,100.,50000.);
-    camera.lookAt(0.,0.,0.);
-    camera.setClip(0.001*min.z, 2.*max.z);
-    */
-    printf("%f %f %f\n", min.x, min.y, min.z);
-    printf("%f %f %f\n",AVG(max.x,min.x),AVG(max.y,min.y),AVG(max.z,min.z));
-    printf("%f %f %f\n",max.x, max.y, max.z);
-    
+    //Point pos = tour.getSite(tour.getCurrSite());
+    //Point look =  tour.getSite(tour.getCurrSite()+1);
+    //camera.moveTo(pos.x,pos.y,pos.z);
+    //camera.lookAt(look.x,look.y,look.z);
+
+    camera.moveTo(0,100,60000);
+    camera.lookAt(0,0,0);
+    camera.setClip(0.01, 50000);
 }
 
 void usage() {
@@ -737,11 +685,6 @@ void usage() {
 int main(int argc, char **argv) {
     if(argc < 3 || !terrain.init(argv[1]) || !tour.init(argv[2])) usage();
     glInit(&argc, argv);
-    tour.printSites();
-    /*camera.moveTo(0, 0, 60000.0);
-    camera.lookAt(0.0, 0.0, 0.0);
-    camera.setClip(1, 10000000);*/
-
     glutMainLoop();
     return 0;
 }

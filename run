@@ -10,4 +10,4 @@ then
 fi
 
 ## Then calls our tour executable giving the data
-./tour regular.tri
+./tour regular.tri finalData/hw4.tour
