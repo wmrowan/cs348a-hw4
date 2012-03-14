@@ -154,6 +154,67 @@ struct Site {
     bool locked;
 };
 
+
+class Salesman {
+public:
+    Salesman(vector<Site> &bag) : left(bag) { }
+
+    vector<Site> solve() {
+        GLfloat min_from_here = FLT_MAX;
+        vector<Site> min_path_from_here;
+        for(int i = 0; i < left.size(); i++ ) {
+            Site &removed = left[i];
+            left.erase(left.begin()+i);
+            vector<Site> possible_path;
+            GLfloat from_here = solve_r(removed, possible_path);
+
+            if(from_here < min_from_here) {
+                min_from_here = from_here;
+                possible_path.insert(possible_path.begin(), removed);
+                min_path_from_here = possible_path;
+            }
+
+            left.insert(left.begin()+i, removed);
+        }
+
+        return min_path_from_here;
+    }
+
+private:
+    GLfloat solve_r(Site &prev, vector<Site> &s) {
+        if(left.size() == 1) {
+            s = vector<Site>();
+            s.push_back(left[0]);
+            return (left[0].p - prev.p).norm();
+        }
+
+        GLfloat min_from_here = FLT_MAX;
+        vector<Site> min_path_from_here;
+        Site choosen;
+        for(int i = 0; i < left.size(); i++ ) {
+            Site &removed = left[i];
+            left.erase(left.begin()+i);
+            vector<Site> possible_path;
+            GLfloat from_here = solve_r(removed, possible_path);
+            if(from_here < min_from_here) {
+                choosen = removed;
+                min_from_here = from_here;
+                min_path_from_here = possible_path;
+            }
+
+            left.insert(left.begin()+i, removed);
+        }
+
+        GLfloat this_link = (prev.p - s[0].p).norm();
+        s = min_path_from_here;
+        s.insert(s.begin(), choosen);
+        return this_link + min_from_here;
+    }
+
+    vector<Site> left;
+};
+
+
 struct Triangle {
     GLfloat vs[0];
     Point v1;
@@ -729,6 +790,7 @@ class Tour {
 private:
      Spline spline;
      vector<Site> sites;
+     int d;
 
 public:
     Tour() {}
@@ -749,7 +811,18 @@ public:
         return in.eof();
     }
 
-    void genTour(int d) {
+    void reorder() {
+        // Gives us the freedom to reorder sites
+        Salesman sales(sites);
+        sites = sales.solve();
+
+        spline.optimize(d);
+        cout << "Reordered sites" << endl;
+        printMetrics();
+    }
+
+    void genTour(int _d) {
+        d = _d;
         spline.optimize(d);
         printMetrics();
     }
@@ -884,6 +957,11 @@ void key(unsigned char k, int x, int y) {
             break;
         case 'l':
             animInfo.start();
+            break;
+        case 't':
+            // Run traveling salesman to reorder sites
+            cout << "Reordering sites" << endl;
+            tour.reorder();
             break;
         default:
             break;
