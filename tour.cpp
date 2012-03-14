@@ -13,6 +13,7 @@
 #define MAX(X,Y) (X > Y ? X : Y)
 #define MIN(X,Y) (X < Y ? X : Y)
 #define AVG(X,Y) ((X + Y) / 2.0)
+#define TIMERMSECS 50
 
 using namespace std;
 
@@ -465,7 +466,7 @@ private:
 
 class Spline {
 private:
-    std::list<Parabola> list;
+    std::vector<Parabola> list;
     vector<Site> sites;
     vector<Point> controlPts;
     GLfloat step_size;
@@ -509,7 +510,7 @@ public:
 
     GLfloat length() {
         GLfloat l = 0.0;
-        for(std::list<Parabola>::iterator iter = list.begin();
+        for(std::vector<Parabola>::iterator iter = list.begin();
                 iter != list.end(); ++iter) {
             l += iter->length();
         }
@@ -519,7 +520,7 @@ public:
 
     GLfloat maxCurvature() {
         GLfloat max_curvature = 0.0;
-        for(std::list<Parabola>::iterator iter = list.begin();
+        for(std::vector<Parabola>::iterator iter = list.begin();
                 iter != list.end(); ++iter) {
             max_curvature = MAX(max_curvature, iter->maxCurvature());
         }
@@ -529,15 +530,27 @@ public:
     
     GLfloat minDistance(Triangle* tri, int n_triangles) {
         GLfloat minDistance = 0.0;
-        for(std::list<Parabola>::iterator iter = list.begin();
+        for(std::vector<Parabola>::iterator iter = list.begin();
                 iter != list.end(); ++iter) {
             minDistance = MIN(minDistance, iter->minDistance(tri, n_triangles));
         }
         return minDistance;
     }
+ 
+    Point getSite(int index) {
+         return (sites[index].p);
+    }
+
+    Point getPoint(int para, GLfloat t) {
+         return list.at(para).evaluate(t);
+    }
+
+    int numParabolas() {
+         return list.size();
+    }
 
     void draw() {
-        for(std::list<Parabola>::iterator iter = list.begin();
+        for(std::vector<Parabola>::iterator iter = list.begin();
                 iter != list.end(); ++iter) {
             iter->draw();
         }
@@ -581,9 +594,13 @@ class Tour {
 private:
      Spline spline;
      vector<Site> sites;
+     int currP;
+     GLfloat time;
+     int currSite;
+     bool touring;
 
 public:
-    Tour() {}
+    Tour() : touring(false) {}
 
     bool init(char* file) {
         std::ifstream in;
@@ -634,6 +651,40 @@ public:
         cout << "Length: " << spline.length() << endl;;
     }
 
+    void step(GLfloat s){
+        time += s;
+    }
+
+    Point getCurrPoint() {
+        if(time >= 1) {
+            time = 0;
+            currP++;
+        }
+        if(currP >= spline.numParabolas()) currP = 0;
+        return spline.getPoint(currP, time);
+    }
+
+    void reset() {
+        time = 0;
+        currP = 0;
+    }
+
+    void startTour() {
+        touring = true;
+    }
+
+    void stopTour() {
+        touring = false;
+    }
+
+    Point nextSite() {
+        return spline.getSite(currSite+1);
+    }
+
+    bool isTouring() {
+        return touring;
+    }
+
 };
 
 class Camera {
@@ -661,6 +712,12 @@ public:
         glLoadIdentity();
         glMultMatrixf(viewMat);
     }
+    
+    void look(Point pos, Point look) {
+        glMatrixMode(GL_MODELVIEW);
+        glLoadIdentity();
+        gluLookAt(pos.x,pos.y,pos.z,look.x,look.y,look.z,0,0,1);
+    }
 
     void moveTo(Point to) {
         move(to - pos);
@@ -682,8 +739,7 @@ public:
         glPushMatrix();
             glLoadIdentity();
             gluLookAt(pos.x, pos.y, pos.z,
-                      at.x,at.y,at.z,
-                      0,0,1);
+                      at.x,at.y,at.z,0,0,1);
             glGetFloatv(GL_MODELVIEW_MATRIX, viewMat);
         glPopMatrix();
     }
@@ -763,7 +819,11 @@ void DefineMaterial() {
 
 void draw() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    camera.draw();
+    if(!tour.isTouring()) {
+        camera.draw();
+    } else {
+        camera.look(tour.getCurrPoint(), tour.nextSite());
+    }
     DefineLight();
     DefineMaterial();
     terrain.draw();
@@ -800,6 +860,11 @@ void key(unsigned char k, int x, int y) {
         case 'r':
             camera.moveTo(Point(0,-100,60000));
             camera.lookAt(Point(0,0,0));
+            break;
+        case 'l':
+            tour.startTour();
+            tour.step(.05);
+            draw();
             break;
         default:
             break;
@@ -844,6 +909,15 @@ void motion(int x, int y) {
     }
 }
 
+void animate(int value) { 
+    if(tour.isTouring()) {
+        tour.step(.025);
+        glutPostRedisplay();
+
+    }
+    glutTimerFunc(TIMERMSECS, animate, 0);
+}
+
 void glInit(int *argc, char **argv) {
     glutInit(argc, argv);
     glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
@@ -856,7 +930,7 @@ void glInit(int *argc, char **argv) {
     glutReshapeFunc(reshape);
     glutMouseFunc(wheel);
     glutMotionFunc(motion);
-
+    glutTimerFunc(TIMERMSECS, animate, 0);
     
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
@@ -875,6 +949,7 @@ void usage() {
     std::cout << "Usage ./tour terrain_data.tri terrain_data.tour" << std::endl;
     exit(1);
 }
+
 
 int main(int argc, char **argv) {
     if(argc < 3 || !terrain.init(argv[1]) || !tour.init(argv[2])) usage();
