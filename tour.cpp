@@ -28,17 +28,6 @@ void errFunc(const char *file, int line) {
     }
 }
 
-struct Point {
-    GLfloat vs[0];
-    GLfloat x;
-    GLfloat y;
-    GLfloat z;
-
-    GLfloat dist(Point &other) {
-        return sqrt(pow(other.x-x,2)+pow(other.y-y,2)+pow(other.z-z,2));
-    }
-};
-
 struct Vector {
     GLfloat vs[0];
     GLfloat x;
@@ -56,6 +45,29 @@ struct Vector {
         // Assumes vectors are normalized
         return (x == other.x) && (y == other.y) && (z == other.z);
     }
+};
+
+struct Point {
+    GLfloat vs[0];
+    GLfloat x;
+    GLfloat y;
+    GLfloat z;
+
+    GLfloat dist(Point &other) {
+        return sqrt(pow(other.x-x,2)+pow(other.y-y,2)+pow(other.z-z,2));
+    }
+
+    Vector subtract(Point &other) {
+        Vector vect;
+        vect.x = x - other.z;
+        vect.y = y - other.y;
+        vect.z = z - other.z;
+    }
+};
+
+struct Site {
+    Point p;
+    bool locked;
 };
 
 struct Line {
@@ -207,13 +219,34 @@ private:
 
 class Spline {
 private:
-    std::list<Parabola> list;
-    Point last;
+    //std::list<Parabola> list;
+    vector<Site> controlPts;
+    vector<GLfloat> knots;
+    Site last;
 
 public:
-    Spline() : list() { }
+    Spline() : controlPts() { }
 
-    void addPoint(Point &pt) {
+    void addPoint(Site &s) {
+         int size;
+         controlPts.push_back(s);
+         size = controlPts.size();
+         if(controlPts.size() > 1) {
+              knots.push_back(knots[size-2] + (controlPts[size-2].p.dist(controlPts[size-1].p)));
+         }
+         last = s;
+    }
+
+    void insertPoint( Site &s, int index) {
+         controlPts.insert(controlPts.begin()+index, s);
+    }
+
+    void findControlPts(GLfloat ratio) {
+          
+
+    }
+
+    /*void addPoint(Point &pt) {
         if(!list.empty()) {
             Parabola bc;
             bc.setCtrlPoint(0, last);
@@ -245,6 +278,7 @@ public:
 
         return max_curvature;
     }
+    
 
     void draw() {
         for(std::list<Parabola>::iterator iter = list.begin();
@@ -252,12 +286,13 @@ public:
             iter->draw();
         }
     }
+    */
 };
 
 class Tour {
 private:
      Spline spline;
-     vector<Point> sites;
+     vector<Site> sites;
 
 public:
     Tour() {}
@@ -266,13 +301,12 @@ public:
         std::ifstream in;
         in.open(file);
 
-        Point p;
+        Site s;
         while(in.good()) {
-            in >> p.x >> p.y >> p.z;
-            spline.addPoint(p);
-            sites.push_back(p);
+            in >> s.p.x >> s.p.y >> s.p.z;
+            spline.addPoint(s);
+            sites.push_back(s);
         }
-
         return in.eof();
     }
 
@@ -280,9 +314,9 @@ public:
         //spline.draw();
         glBegin(GL_LINE_STRIP);
         glLineWidth(100.0);
-        for(std::vector<Point>::iterator iter = sites.begin();
+        for(std::vector<Site>::iterator iter = sites.begin();
             iter != sites.end(); ++iter) {
-                glVertex3fv(iter->vs);
+                glVertex3fv(iter->p.vs);
         }
         glEnd();
     }
