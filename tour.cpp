@@ -484,6 +484,10 @@ public:
         sites.push_back(s);
     }
 
+    void clearSplineFrom(int i) {
+        list.erase(list.begin()+i, list.end());
+    }
+
     void insertJoint(Point p, int i) {
         Site s;
         s.p = p;
@@ -566,8 +570,10 @@ public:
          return (sites[index].p);
     }
 
-    Point getPoint(int para, GLfloat t) {
-         return list.at(para).evaluate(t);
+    Point getPoint(GLfloat t) {
+        int p_i = t / 1;
+        t -= p_i;
+        return list[p_i].evaluate(1.0-t);
     }
 
     int numParabolas() {
@@ -621,101 +627,6 @@ private:
     
 };
 
-class Tour {
-private:
-     Spline spline;
-     vector<Site> sites;
-     int currP;
-     GLfloat time;
-     int currSite;
-     bool touring;
-
-public:
-    Tour() : touring(false) {}
-
-    bool init(char* file) {
-        std::ifstream in;
-        in.open(file);
-
-        Site s;
-        s.locked = true;
-        while(in.good()) {
-            in >> s.p.x >> s.p.y >> s.p.z;
-            if(in.good()) {
-               spline.addSite(s);
-               sites.push_back(s);
-            }
-        }
-        return in.eof();
-    }
-
-    void genTour(int d) {
-        spline.optimize(d);
-        printMetrics();
-    }
-
-    void draw() {
-        spline.draw();
-    }
-
-    GLfloat minHeight(){
-        spline.minHeight();
-    }
-
-    void printSites() {
-        for(std::vector<Site>::iterator iter = sites.begin();
-               iter != sites.end(); ++iter) {
-            printf("%f %f %f\n", iter->p.x, iter->p.y, iter->p.z);
-        }
-    }
-
-    void printMetrics() {
-        cout << "Parabolic curves: " << spline.numCurves() << endl;;
-        cout << "Maximum curvature: " << spline.maxCurvature() << endl;;
-        cout << "Length: " << spline.length() << endl;;
-        cout << "Min height: " << minHeight() << endl;
-    }
-
-    void step(GLfloat s){
-        time += s;
-    }
-
-    Point getCurrPoint() {
-        if(time >= 1) {
-            time = 0;
-            currSite++;
-            currP++;
-        }
-        if(currP >= spline.numParabolas()){
-            currP = 0;
-            currSite++;
-        }
-        return spline.getPoint(currP, time);
-    }
-
-    void reset() {
-        time = 0;
-        currP = 0;
-    }
-
-    void startTour() {
-        touring = true;
-    }
-
-    void stopTour() {
-        touring = false;
-    }
-
-    Point nextSite() {
-        return spline.getSite(currSite+1);
-    }
-
-    bool isTouring() {
-        return touring;
-    }
-
-};
-
 class Camera {
 private:
     Point pos;
@@ -724,6 +635,7 @@ private:
     int window_width;
     int window_height;
     GLfloat aspect_ratio;
+    GLfloat fov;
 
     GLfloat viewMat[16];
 
@@ -731,8 +643,14 @@ public:
     Camera() :  pos(), close(10), far(100000),
                 window_width(INITIAL_WINDOW_SIZE),
                 window_height(INITIAL_WINDOW_SIZE),
-                aspect_ratio((GLfloat)window_width / (GLfloat)window_height)
+                aspect_ratio((GLfloat)window_width / (GLfloat)window_height),
+                fov(45.0)
     {
+        updateProj();
+    }
+
+    void setFov(GLfloat f) {
+        fov = f;
         updateProj();
     }
 
@@ -742,12 +660,6 @@ public:
         glMultMatrixf(viewMat);
     }
     
-    void look(Point pos, Point look) {
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-        gluLookAt(pos.x,pos.y,pos.z,pos.x+1,pos.y,pos.z-1,0,0,1);
-    }
-
     void moveTo(Point to) {
         move(to - pos);
     }
@@ -795,24 +707,81 @@ public:
         updateProj();
     }
 
-private:
     void setClip(GLfloat min, GLfloat max) {
         close = min;
         far = max;
         updateProj();
     }
 
+private:
+
     void updateProj() {
         glViewport(0,0, window_width, window_height);
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
-        gluPerspective(45.0, aspect_ratio, close, far);
+        gluPerspective(fov, aspect_ratio, close, far);
     }
 };
 
+Camera camera;
+
+class Tour {
+private:
+     Spline spline;
+     vector<Site> sites;
+
+public:
+    Tour() {}
+
+    bool init(char* file) {
+        std::ifstream in;
+        in.open(file);
+
+        Site s;
+        s.locked = true;
+        while(in.good()) {
+            in >> s.p.x >> s.p.y >> s.p.z;
+            if(in.good()) {
+               spline.addSite(s);
+               sites.push_back(s);
+            }
+        }
+        return in.eof();
+    }
+
+    void genTour(int d) {
+        spline.optimize(d);
+        printMetrics();
+    }
+
+    void draw() {
+        spline.draw();
+    }
+
+    GLfloat minHeight() {
+        spline.minHeight();
+    }
+
+    void printSites() {
+        for(std::vector<Site>::iterator iter = sites.begin();
+               iter != sites.end(); ++iter) {
+            printf("%f %f %f\n", iter->p.x, iter->p.y, iter->p.z);
+        }
+    }
+
+    void printMetrics() {
+        cout << "Parabolic curves: " << spline.numCurves() << endl;;
+        cout << "Maximum curvature: " << spline.maxCurvature() << endl;;
+        cout << "Length: " << spline.length() << endl;;
+        //cout << "Min height: " << minHeight() << endl;
+    }
+
+    Point getPoint(GLfloat t) {
+        return spline.getPoint(t);
+    }
+};
 
 Tour tour;
-Camera camera;
 
 void DefineLight() {
     GLfloat light0_ambient[]  = {0.2, 0.2, 0.2, 1.0};
@@ -844,17 +813,40 @@ void DefineMaterial() {
     glMaterialfv(GL_FRONT, GL_SHININESS, shininess);
 }
 
+struct {
+    bool active;
+    clock_t startTime;
 
+    void start() {
+        active = true;
+        startTime = clock();
+
+        camera.setClip(0.01, 10000);
+        camera.setFov(140.0);
+    }
+
+    void end() {
+        active = false;
+
+        camera.setClip(10, 100000);
+        camera.setFov(45.0);
+    }
+
+    GLfloat getTime() {
+        return (clock() - startTime) / (GLfloat)CLOCKS_PER_SEC;
+    }
+
+} animInfo;
 
 void draw() {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    if(!tour.isTouring()) {
-        camera.draw();
-    } else {
-        camera.look(tour.getCurrPoint(), tour.nextSite());
+    if(animInfo.active) {
+        camera.moveTo(tour.getPoint(animInfo.getTime()));
     }
+
     DefineLight();
     DefineMaterial();
+    camera.draw();
     terrain.draw();
     tour.draw();
     glutSwapBuffers();
@@ -891,9 +883,7 @@ void key(unsigned char k, int x, int y) {
             camera.lookAt(Point(0,0,0));
             break;
         case 'l':
-            tour.startTour();
-            tour.step(.05);
-            draw();
+            animInfo.start();
             break;
         default:
             break;
@@ -939,10 +929,8 @@ void motion(int x, int y) {
 }
 
 void animate(int value) { 
-    if(tour.isTouring()) {
-        tour.step(.025);
+    if(animInfo.active) {
         glutPostRedisplay();
-
     }
     glutTimerFunc(TIMERMSECS, animate, 0);
 }
