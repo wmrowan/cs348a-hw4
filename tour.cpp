@@ -100,6 +100,13 @@ Vector operator-(Point one, Point two) {
     return v;
 }
 
+Vector operator*(GLfloat f, Vector v) {
+    Vector r;
+    r.x = v.x*f;
+    r.y = v.y*f;
+    r.z = v.z*f;
+}
+
 Vector cross(Vector one, Vector two) {
     Vector r;
     r.x = one.y * two.z - one.z * two.y;
@@ -277,16 +284,22 @@ public:
         int curr = 2;
         Vector tangent;
         Site currSite;
+        int knot1 = 0;
+        GLfloat knot1_dist;
+        GLfloat knot2_dist;
+        GLfloat ratio;
         while(curr != controlPts.size()-1) {
             currSite = controlPts[curr];
+            knot1_dist = knots[knot1 + 1] - knots[knot1]; 
+            knot1++;
+            knot2_dist = knots[knot1 + 1] - knots[knot1];
+            knot1++;
+            ratio = knot1_dist/knot2_dist;
             tangent = controlPts[curr-1].p - currSite.p;
-            printf("%f %f %f\n", currSite.p.x, currSite.p.y, currSite.p.z);
-            tangent = -tangent;
-            printf("%f %f %f\n", tangent.x, tangent.y, tangent.z);
+            tangent = (ratio*-1)*tangent;
             newPt.p.x = currSite.p.x + tangent.x; 
             newPt.p.y = currSite.p.y + tangent.y;
             newPt.p.z = currSite.p.z + tangent.z;  
-            printf("%f %f %f\n", newPt.p.x, newPt.p.y, newPt.p.z);
             controlPts.insert(controlPts.begin()+curr+1, newPt);
             curr += 2;
         }
