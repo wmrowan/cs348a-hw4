@@ -63,11 +63,6 @@ struct Vector {
     }
 };
 
-struct Site {
-    Point p;
-    bool locked;
-};
-
 Vector operator-(Vector v) {
     Vector r;
     r.x = -v.x;
@@ -126,6 +121,11 @@ Vector cross(Vector one, Vector two) {
     return r;
 }
 
+
+GLfloat dot(Vector one, Vector two) {
+    GLfloat dot = (one.x*two.x) + (one.y*two.y) + (one.z*two.z);
+}
+
 GLfloat lerp(GLfloat one, GLfloat two, GLfloat t) {
     assert(t >= 0.0 && t <= 1.0);
     return (t*one + (1.0-t)*two);
@@ -142,6 +142,78 @@ Point lerp(Point &one, Point &two, GLfloat t) {
 
     return pt;
 }
+
+struct Site {
+    Point p;
+    bool locked;
+};
+
+struct Triangle {
+    GLfloat vs[0];
+    Point v1;
+    Point v2;
+    Point v3;
+       
+    GLfloat maxX() {
+        return MAX(MAX(v1.x, v2.x), v3.x);
+    }
+
+    GLfloat minX() {
+        return MIN(MIN(v1.x, v2.x), v3.x);
+    }
+
+    GLfloat maxY() {
+        return MAX(MAX(v1.y, v2.y), v3.y);
+    }
+
+    GLfloat minY() {
+        return MIN(MIN(v1.y, v2.y), v3.y);
+    }
+        
+    GLfloat maxZ() {
+        return MAX(MAX(v1.z, v2.z), v3.z);
+    }
+
+    GLfloat minZ() {
+        return MIN(MIN(v1.z, v2.z), v3.z);
+    }
+
+    bool sameSide (Point p1, Point p2, Point a, Point b) {
+        Vector cp1 = cross(b-a, p1-a);
+        Vector cp2 = cross(b-a, p2-a);
+        if(dot(cp1, cp2) >= 0)
+           return true;
+        return false;
+    }
+
+    bool inside(Point p) {
+        Point a,b,c;
+        a = v1;
+        b = v2;
+        c = v3;
+        p.z = 0;
+        a.z = 0;
+        b.z = 0;
+        c.z = 0;
+        if(sameSide(p,a, b,c) && sameSide(p,b, a,c) && sameSide(p,c, a,b)) 
+            return true;
+        return false;
+    }
+
+    Point findBarycentric(Point &p) {
+        Vector weights, location;
+        Point zero;
+        GLfloat detA = (v1.x*v2.y)-(v1.x*v3.y)-(v2.x*v1.y)+(v2.x*v3.y)+(v3.x*v1.y)-(v3.x*v2.y);
+        weights.x = ((p.x*v2.y)-(p.x*v3.y)-(v2.x*p.y)+(v2.x*v3.y)+(v3.x*p.y)-(v3.x*v2.y))/detA;
+        weights.y = ((v1.x*p.y)-(v1.x*v3.y)-(p.x*v1.y)+(p.x*v3.y)+(v3.x*v1.y)-(v3.x*p.y))/detA;
+        weights.z = ((v1.x*v2.y)-(v1.x*p.y)-(v2.x*v1.y)+(v2.x*p.y)+(p.x*v1.y)-(p.x*v2.y))/detA;
+        location = (weights.x*v1)+(weights.y*v2)+(weights.z*v3); 
+        return (zero+location);
+    }
+    
+};
+
+
 
 class Parabola {
 private:
@@ -208,6 +280,24 @@ public:
         }
 
         return max_curvature;
+    }
+
+    GLfloat minDistance(Triangle *triangles, int n_triangles) {
+        GLfloat minDist = INT_MAX;
+        Point zero;
+        int count = 0;
+        for(GLfloat t = step_size; t < 1.0; t += step_size) {
+            count = 0;
+            Point cur = evaluate(t);
+            for(int i = 0; i < n_triangles; i++) {
+                if(triangles[i].inside(cur)) {
+                    Point p = triangles[i].findBarycentric(cur);
+                    minDist = MIN(minDist, cur.z - p.z);
+                    i = n_triangles;
+                }              
+            } 
+        }
+        return minDist;
     }
 
 private:
@@ -331,6 +421,14 @@ public:
         return max_curvature;
     }
     
+    GLfloat minDistance(Triangle* tri, int n_triangles) {
+        GLfloat minDistance = 0.0;
+        for(std::list<Parabola>::iterator iter = list.begin();
+                iter != list.end(); ++iter) {
+            minDistance = MIN(minDistance, iter->minDistance(tri, n_triangles));
+        }
+        return minDistance;
+    }
 
     void draw() {
         for(std::list<Parabola>::iterator iter = list.begin();
@@ -396,6 +494,10 @@ public:
         */
     }
 
+    GLfloat minDistance(Triangle* tri, int n_triangles){
+        spline.minDistance(tri, n_triangles);
+    }
+
     void printKnots() {
         spline.printKnots();
     }
@@ -415,38 +517,6 @@ public:
 
 class Terrain {
 private:
-    struct Triangle {
-        GLfloat vs[0];
-        Point v1;
-        Point v2;
-        Point v3;
-
-        
-        GLfloat maxX() {
-            return MAX(MAX(v1.x, v2.x), v3.x);
-        }
-
-        GLfloat minX() {
-            return MIN(MIN(v1.x, v2.x), v3.x);
-        }
-
-        GLfloat maxY() {
-            return MAX(MAX(v1.y, v2.y), v3.y);
-        }
-
-        GLfloat minY() {
-            return MIN(MIN(v1.y, v2.y), v3.y);
-        }
-        
-        GLfloat maxZ() {
-            return MAX(MAX(v1.z, v2.z), v3.z);
-        }
-
-        GLfloat minZ() {
-            return MIN(MIN(v1.z, v2.z), v3.z);
-        }
-    };
-
     int n_triangles;
     int n_sites;
     Point max_coords;
@@ -546,12 +616,29 @@ public:
         );
     }
 
+    GLfloat findHeight(Point &p) {
+        for(int i = 0; i < n_triangles; i++) {
+            if(triangles[i].inside(p)) {
+                Point pos = triangles[i].findBarycentric(p);
+                p.z - pos.z;
+            }               
+        } 
+    }
+
     Point getMaxCoords() {
         return max_coords;
     }
   
     Point getMinCoords() {
         return min_coords; 
+    }
+
+    Triangle* getTriangles() {
+        return triangles;
+    }
+
+    int numTriangles() {
+        return n_triangles;
     }
 
     static const GLfloat colors[6][4];
@@ -813,7 +900,7 @@ void usage() {
 int main(int argc, char **argv) {
     if(argc < 3 || !terrain.init(argv[1]) || !tour.init(argv[2])) usage();
     tour.findControlPts(1);
-
+    cout << tour.minDistance(terrain.getTriangles(), terrain.numTriangles()) << endl;
    // printf("these are the sites\n");
     //tour.printSites();
     //printf("these are the controlPts\n");
