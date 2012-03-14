@@ -213,6 +213,148 @@ struct Triangle {
     
 };
 
+class Terrain {
+private:
+    int n_triangles;
+    int n_sites;
+    Point max_coords;
+    Point min_coords;
+    Triangle *triangles;
+    GLuint texture;
+
+public:
+    Terrain() : n_triangles(0), triangles(NULL) {}
+
+    bool init(char *file) {
+
+        // Free any existing state from a previous initialization
+        if(triangles) free(triangles);
+        std::ifstream in;
+        in.open(file);
+
+        // The total number of triangles will be the on the first line of the file
+        in >> n_triangles;
+        triangles = (Triangle*)malloc(sizeof(Triangle) * n_triangles);
+
+        for(int i = 0; i < n_triangles && in.good(); ++i) {
+            in >> triangles[i].v1.x >> triangles[i].v1.y >> triangles[i].v1.z;
+            in >> triangles[i].v2.x >> triangles[i].v2.y >> triangles[i].v2.z;
+            in >> triangles[i].v3.x >> triangles[i].v3.y >> triangles[i].v3.z;
+        }
+
+        if(in.fail()) {
+            return false;
+        }
+
+        // Now compute the max and min elevations which we'll need for our terrain shading
+        max_coords.x = INT_MIN;
+        max_coords.y = INT_MIN;
+        max_coords.z = INT_MIN;
+        min_coords.x = INT_MAX;
+        min_coords.y = INT_MAX;
+        min_coords.z = INT_MAX;
+
+        for(int i = 0; i < n_triangles; ++i) {
+            if(triangles[i].maxX() > max_coords.x)
+              max_coords.x = triangles[i].maxX();
+            if(triangles[i].minX() < min_coords.x)
+                min_coords.x = triangles[i].minX();
+            if(triangles[i].maxY() > max_coords.y)
+                max_coords.y = triangles[i].maxY();
+            if(triangles[i].minY() < min_coords.y)
+                min_coords.y = triangles[i].minY();
+            if(triangles[i].maxZ() > max_coords.z)
+                max_coords.z = triangles[i].maxZ();
+            if(triangles[i].minZ() < min_coords.z)
+                min_coords.z = triangles[i].minZ();
+	    }
+
+        Point minCoords = getMinCoords();
+        Point maxCoords = getMaxCoords();
+        
+        return true;
+    }
+
+    GLfloat height(Point &p) {
+        for(int i = 0; i < n_triangles; i++) {
+            if(triangles[i].inside(p)) {
+                Point pos = triangles[i].findBarycentric(p);
+                p.z - pos.z;
+            }               
+        } 
+    }
+
+    void draw() {
+
+        glPushMatrix();
+        glBegin(GL_TRIANGLES);
+        for(int i = 0; i < n_triangles; ++i) {
+            GLfloat elevation = AVG(triangles[i].maxZ(), triangles[i].minZ());
+            setElevationColor(elevation);
+
+            glVertex3fv((GLfloat *)&triangles[i].v1.vs);
+            glVertex3fv((GLfloat *)&triangles[i].v2.vs);
+            glVertex3fv((GLfloat *)&triangles[i].v3.vs);
+        }
+        glEnd();
+        glPopMatrix();
+    }
+
+    
+    void setElevationColor(GLfloat elevation) {
+        GLfloat relative_height = (elevation - min_coords.z) / (max_coords.z - min_coords.z);
+        if(relative_height < colors[0][0]) {
+            glColor3fv(colors[0]+1);
+        } else if(relative_height < colors[1][0]) {
+            setColor(1, relative_height);
+        } else if(relative_height < colors[2][0]) {
+            setColor(2, relative_height);
+        } else if(relative_height < colors[3][0]) {
+            setColor(3, relative_height);
+        } else if(relative_height < colors[4][0]) {
+            setColor(4, relative_height);
+        } else {
+            glColor3fv(colors[5]+1);
+        }
+    }
+
+    void setColor(int i, GLfloat relative_height) {
+        GLfloat s = (relative_height-colors[i-1][0]) / (colors[i][0] - colors[i-1][0]);
+        glColor3f(lerp(colors[i][1],colors[i+1][1],s),
+                  lerp(colors[i][2],colors[i+1][2],s),
+                  lerp(colors[i][3],colors[i+1][3],s)
+        );
+    }
+
+    Triangle* getTriangles(){
+        return triangles;
+    }
+
+    int numTriangles() {
+        return n_triangles;
+    }
+    Point getMaxCoords() {
+        return max_coords;
+    }
+  
+    Point getMinCoords() {
+        return min_coords; 
+    }
+
+    static const GLfloat colors[6][4];
+
+};
+
+const GLfloat Terrain::colors[6][4] = {
+    {0.005, 0.2, 0.2, 1.0},
+    {0.05, 0.8, 0.5, 0.2},
+    {0.14, 0.3, 0.6, 0.3},
+    {0.4, 0.3, 0.8, 0.3},
+    {0.6, 0.5, 0.7, 0.5},
+    {1.0, 1.0, 1.0, 1.0},
+};
+
+Terrain terrain;
 
 
 class Parabola {
@@ -324,83 +466,47 @@ private:
 class Spline {
 private:
     std::list<Parabola> list;
-    vector<Site> controlPts;
-    vector<GLfloat> knots;
-    Site last;
+    vector<Site> sites;
+    vector<Point> controlPts;
+    GLfloat step_size;
 
 public:
-    Spline() : controlPts(), knots() { }
+    Spline() : sites(), controlPts(), step_size(1) { }
 
     void addSite(Site &s) {
-        int numPts;
-        GLfloat prevKnot;
-        controlPts.push_back(s);
-        numPts = controlPts.size();
-        if(numPts > 1) {
-            GLfloat prevKnot;
-            prevKnot = knots[knots.size()-1];
-            knots.push_back(prevKnot + (controlPts[numPts-2].p.dist(controlPts[numPts-1].p)));         }
-        else {
-            knots.push_back(0);
-        }
-        last = s;
+        sites.push_back(s);
     }
 
-    void insertSite( Site &s, int index) {
-        controlPts.insert(controlPts.begin()+index, s);
-       //  
+    void insertJoint(Point p, int i) {
+        Site s;
+        s.p = p;
+        s.locked = false;
+        sites.insert(sites.begin()+i, s);
     }
 
-   /* void insertKnot(Site &site, int index) {
-        knots.insert(knots.begin()+index, knots[index-1] + .p.dist(site.p));
-        knots[index + 1] = site.p.dist(knots[index+1].p;
+    void genSpline() {
+        optimize();
+        findControlPts();
+        generateParabolas();
     }
-*/
-    void findControlPts(GLfloat step) {
-        Point planeCenter = lerp(controlPts[0].p, controlPts[1].p, .5);
-        Vector plane = controlPts[1].p - controlPts[0].p;
-        Site newPt;
-        newPt.locked = false;
-        newPt.p.z += step;
-        newPt.p.x = planeCenter.x + 1;
-        newPt.p.y = (((plane.x*(planeCenter.x - newPt.p.x)) + ((plane.z*(planeCenter.z - newPt.p.z))))/plane.y) + planeCenter.y;
-        controlPts.insert(controlPts.begin()+1, newPt);
 
-        int curr = 2;
-        Vector tangent;
-        Site currSite;
-        int knot1 = 0;
-        GLfloat knot1_dist;
-        GLfloat knot2_dist;
-        GLfloat ratio;
-        while(curr != controlPts.size()-1) {
-            currSite = controlPts[curr];
-            knot1_dist = knots[knot1 + 1] - knots[knot1]; 
-            knot1++;
-            knot2_dist = knots[knot1 + 1] - knots[knot1];
-            knot1++;
-            ratio = knot1_dist/knot2_dist;
-            tangent = controlPts[curr-1].p - currSite.p;
-            tangent = (ratio*-1)*tangent;
-            newPt.p.x = currSite.p.x + tangent.x; 
-            newPt.p.y = currSite.p.y + tangent.y;
-            newPt.p.z = currSite.p.z + tangent.z;  
-            controlPts.insert(controlPts.begin()+curr+1, newPt);
-            curr += 2;
+    #define SAFETY_FACTOR (50)
+    void optimize() {
+        for(int i = 0; i < sites.size()-1; i+=2) {
+            Point cur = sites[i].p;
+            Point next = sites[i+1].p;
+            Point candidate = lerp(cur, next, 0.5);
+            
+            GLfloat height = terrain.height(candidate);
+            if(height < 0) {
+                candidate.z -= height;
+                candidate.z += SAFETY_FACTOR;
+            }
+
+            insertJoint(candidate, i+1);
         }
     }
 
-    void generateParabolas() {
-        for(int i = 0; i < controlPts.size()-3; i++) {
-            Parabola bc;
-            bc.setCtrlPoint(0, controlPts[i].p);
-            bc.setCtrlPoint(1, controlPts[i+1].p);
-            bc.setCtrlPoint(2, controlPts[i+2].p);
-            i++;
-            list.push_back(bc);
-        }
-    }
-   
     GLfloat length() {
         GLfloat l = 0.0;
         for(std::list<Parabola>::iterator iter = list.begin();
@@ -437,25 +543,43 @@ public:
         }
     }
 
-    void printKnots() {
-         for(std::vector<GLfloat>::iterator iter = knots.begin();
-                iter != knots.end(); ++iter) {
-             printf("%f\n", *iter);
-         }
+private:
+
+    void findControlPts() {
+        controlPts.clear();
+
+        Point planeCenter = lerp(sites[0].p, sites[1].p, .5);
+        Point newPt;
+
+        newPt = lerp(sites[0].p, sites[1].p, 0.8);
+        controlPts.insert(controlPts.begin(), newPt);
+
+        for(int i = 1; i < sites.size(); ++i) {
+            Point currSite = sites[i].p;
+            Vector prevTangent = controlPts[i-1] - currSite;
+            Vector nextTangent = -prevTangent;
+
+            Point nextCtrlPt = currSite + nextTangent;
+            controlPts.push_back(nextCtrlPt);
+        }
     }
 
-    void printControlPts() {
-         for(std::vector<Site>::iterator iter = controlPts.begin();
-                iter != controlPts.end(); ++iter) {
-             printf("%f %f %f\n", iter->p.x, iter->p.y, iter->p.z);
-         }
+    void generateParabolas() {
+        for(int i = 0; i < sites.size()-1; i++) {
+            Parabola bc;
+            bc.setCtrlPoint(0, sites[i].p);
+            bc.setCtrlPoint(1, controlPts[i]);
+            bc.setCtrlPoint(2, sites[i+1].p);
+            list.push_back(bc);
+        }
     }
+   
+    
 };
 
 class Tour {
 private:
      Spline spline;
-
      vector<Site> sites;
 
 public:
@@ -477,9 +601,9 @@ public:
         return in.eof();
     }
 
-    void findControlPts(GLfloat step) {
-        spline.findControlPts(step);
-        spline.generateParabolas();
+    void genTour() {
+        spline.genSpline();
+        printMetrics();
     }
 
     void draw() {
@@ -498,10 +622,6 @@ public:
         spline.minDistance(tri, n_triangles);
     }
 
-    void printKnots() {
-        spline.printKnots();
-    }
-    
     void printSites() {
         for(std::vector<Site>::iterator iter = sites.begin();
                iter != sites.end(); ++iter) {
@@ -509,151 +629,12 @@ public:
         }
     }
 
-    void printControlPts() {
-        spline.printControlPts();
+    void printMetrics() {
+        cout << "Maximum curvature: " << spline.maxCurvature() << endl;;
+        cout << "Length: " << spline.length() << endl;;
     }
 
 };
-
-class Terrain {
-private:
-    int n_triangles;
-    int n_sites;
-    Point max_coords;
-    Point min_coords;
-    Triangle *triangles;
-
-
-public:
-    Terrain() : n_triangles(0), triangles(NULL) {}
-
-    bool init(char *file) {
-        // Free any existing state from a previous initialization
-        if(triangles) free(triangles);
-        std::ifstream in;
-        in.open(file);
-        // The total number of triangles will be the on the first line of the file
-        in >> n_triangles;
-        triangles = (Triangle*)malloc(sizeof(Triangle) * n_triangles);
-
-        for(int i = 0; i < n_triangles && in.good(); ++i) {
-            in >> triangles[i].v1.x >> triangles[i].v1.y >> triangles[i].v1.z;
-            in >> triangles[i].v2.x >> triangles[i].v2.y >> triangles[i].v2.z;
-            in >> triangles[i].v3.x >> triangles[i].v3.y >> triangles[i].v3.z;
-        }
-
-        if(in.fail()) {
-            return false;
-        }
-
-        // Now compute the max and min elevations which we'll need for our terrain shading
-        max_coords.x = INT_MIN;
-        max_coords.y = INT_MIN;
-        max_coords.z = INT_MIN;
-        min_coords.x = INT_MAX;
-        min_coords.y = INT_MAX;
-        min_coords.z = INT_MAX;
-
-        for(int i = 0; i < n_triangles; ++i) {
-            if(triangles[i].maxX() > max_coords.x)
-              max_coords.x = triangles[i].maxX();
-            if(triangles[i].minX() < min_coords.x)
-                min_coords.x = triangles[i].minX();
-            if(triangles[i].maxY() > max_coords.y)
-                max_coords.y = triangles[i].maxY();
-            if(triangles[i].minY() < min_coords.y)
-                min_coords.y = triangles[i].minY();
-            if(triangles[i].maxZ() > max_coords.z)
-                max_coords.z = triangles[i].maxZ();
-            if(triangles[i].minZ() < min_coords.z)
-                min_coords.z = triangles[i].minZ();
-	    }
-
-        Point minCoords = getMinCoords();
-        Point maxCoords = getMaxCoords();
-        
-        return true;
-    }
-
-    void draw() {
-        glPushMatrix();
-        glBegin(GL_TRIANGLES);
-        for(int i = 0; i < n_triangles; ++i) {
-            GLfloat elevation = AVG(triangles[i].maxZ(), triangles[i].minZ());
-            setElevationColor(elevation);
-
-            glVertex3fv((GLfloat *)&triangles[i].v1.vs);
-            glVertex3fv((GLfloat *)&triangles[i].v2.vs);
-            glVertex3fv((GLfloat *)&triangles[i].v3.vs);
-        }
-        glEnd();
-        glPopMatrix();
-    }
-
-    
-    void setElevationColor(GLfloat elevation) {
-        GLfloat relative_height = (elevation - min_coords.z) / (max_coords.z - min_coords.z);
-        if(relative_height < colors[0][0]) {
-            glColor3fv(colors[0]+1);
-        } else if(relative_height < colors[1][0]) {
-            setColor(1, relative_height);
-        } else if(relative_height < colors[2][0]) {
-            setColor(2, relative_height);
-        } else if(relative_height < colors[3][0]) {
-            setColor(3, relative_height);
-        } else if(relative_height < colors[4][0]) {
-            setColor(4, relative_height);
-        } else {
-            glColor3fv(colors[5]+1);
-        }
-    }
-
-    void setColor(int i, GLfloat relative_height) {
-        GLfloat s = (relative_height-colors[i-1][0]) / (colors[i][0] - colors[i-1][0]);
-        glColor3f(lerp(colors[i][1],colors[i+1][1],s),
-                  lerp(colors[i][2],colors[i+1][2],s),
-                  lerp(colors[i][3],colors[i+1][3],s)
-        );
-    }
-
-    GLfloat findHeight(Point &p) {
-        for(int i = 0; i < n_triangles; i++) {
-            if(triangles[i].inside(p)) {
-                Point pos = triangles[i].findBarycentric(p);
-                p.z - pos.z;
-            }               
-        } 
-    }
-
-    Point getMaxCoords() {
-        return max_coords;
-    }
-  
-    Point getMinCoords() {
-        return min_coords; 
-    }
-
-    Triangle* getTriangles() {
-        return triangles;
-    }
-
-    int numTriangles() {
-        return n_triangles;
-    }
-
-    static const GLfloat colors[6][4];
-
-};
-
-const GLfloat Terrain::colors[6][4] = {
-    {0.005, 0.2, 0.2, 1.0},
-    {0.05, 0.8, 0.5, 0.2},
-    {0.14, 0.3, 0.6, 0.3},
-    {0.4, 0.3, 0.8, 0.3},
-    {0.6, 0.5, 0.7, 0.5},
-    {1.0, 1.0, 1.0, 1.0},
-};
-
 
 class Camera {
 private:
@@ -716,9 +697,8 @@ public:
             // Rotate look theta around the vertical axis through pos
             glRotatef(theta, 0, 0, 1.0);
             
-
             // Rotate look phi about the horizontal axis through pos and 
-            glRotatef(phi, 0, 1, 0);
+            glRotatef(phi, 1, 0, 0);
 
             glGetFloatv(GL_MODELVIEW_MATRIX, viewMat);
         glPopMatrix();
@@ -746,7 +726,6 @@ private:
 };
 
 
-Terrain terrain;
 Tour tour;
 Camera camera;
 
@@ -856,7 +835,7 @@ void motion(int x, int y) {
         int diff_x = x - mouseState.lastX;
         int diff_y = y - mouseState.lastY;
 
-        camera.rotate(RAD_PER_UNIT * diff_x, RAD_PER_UNIT * diff_y);
+        camera.rotate(RAD_PER_UNIT * diff_x, RAD_PER_UNIT * -diff_y);
 
         mouseState.lastX = x;
         mouseState.lastY = y;
@@ -899,13 +878,9 @@ void usage() {
 
 int main(int argc, char **argv) {
     if(argc < 3 || !terrain.init(argv[1]) || !tour.init(argv[2])) usage();
-    tour.findControlPts(1);
     cout << tour.minDistance(terrain.getTriangles(), terrain.numTriangles()) << endl;
-   // printf("these are the sites\n");
-    //tour.printSites();
-    //printf("these are the controlPts\n");
-    //tour.printControlPts();
     glInit(&argc, argv);
+    tour.genTour();
     glutMainLoop();
     return 0;
 }
