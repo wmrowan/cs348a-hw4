@@ -106,9 +106,9 @@ Vector operator-(Point one, Point two) {
 
 Vector operator*(Vector v, GLfloat by) {
     Vector r;
-    r.x *= by;
-    r.y *= by;
-    r.z *= by;
+    r.x = v.x * by;
+    r.x = v.y * by;
+    r.x = v.z * by;
     return r;
 }
 
