@@ -7,6 +7,7 @@
 #include <list>
 #include <math.h>
 #include <vector>
+#include <SFML/Graphics.hpp>
 
 #define INITIAL_WINDOW_SIZE (800)
 
@@ -143,6 +144,201 @@ Point lerp(Point &one, Point &two, GLfloat t) {
     return pt;
 }
 
+class Terrain {
+private:
+    struct Triangle {
+        GLfloat vs[0];
+        Point v1;
+        Point v2;
+        Point v3;
+
+        
+        GLfloat maxX() {
+            return MAX(MAX(v1.x, v2.x), v3.x);
+        }
+
+        GLfloat minX() {
+            return MIN(MIN(v1.x, v2.x), v3.x);
+        }
+
+        GLfloat maxY() {
+            return MAX(MAX(v1.y, v2.y), v3.y);
+        }
+
+        GLfloat minY() {
+            return MIN(MIN(v1.y, v2.y), v3.y);
+        }
+        
+        GLfloat maxZ() {
+            return MAX(MAX(v1.z, v2.z), v3.z);
+        }
+
+        GLfloat minZ() {
+            return MIN(MIN(v1.z, v2.z), v3.z);
+        }
+    };
+
+    int n_triangles;
+    int n_sites;
+    Point max_coords;
+    Point min_coords;
+    Triangle *triangles;
+    sf::Image satmap;
+    GLuint texture;
+
+public:
+    Terrain() : n_triangles(0), triangles(NULL), satmap() {}
+
+    bool init(char *file) {
+        if(false || satmap.LoadFromFile("./bayarea.jpg")) {
+            int width = satmap.GetWidth();
+            int height = satmap.GetHeight();
+
+            glEnable(GL_TEXTURE_2D);
+            glGenTextures(1, &texture);
+
+            glBindTexture(GL_TEXTURE_2D, texture);
+
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height,
+                0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+            //gluBuild2DMipmaps(GL_TEXTURE_2D, 3, width, height, GL_RGB,
+            //    GL_UNSIGNED_BYTE, satmap.GetPixelsPtr());
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height,
+                GL_RGBA, GL_UNSIGNED_BYTE, satmap.GetPixelsPtr());
+        }
+
+        // Free any existing state from a previous initialization
+        if(triangles) free(triangles);
+        std::ifstream in;
+        in.open(file);
+
+        // The total number of triangles will be the on the first line of the file
+        in >> n_triangles;
+        triangles = (Triangle*)malloc(sizeof(Triangle) * n_triangles);
+
+        for(int i = 0; i < n_triangles && in.good(); ++i) {
+            in >> triangles[i].v1.x >> triangles[i].v1.y >> triangles[i].v1.z;
+            in >> triangles[i].v2.x >> triangles[i].v2.y >> triangles[i].v2.z;
+            in >> triangles[i].v3.x >> triangles[i].v3.y >> triangles[i].v3.z;
+        }
+
+        if(in.fail()) {
+            return false;
+        }
+
+        // Now compute the max and min elevations which we'll need for our terrain shading
+        max_coords.x = INT_MIN;
+        max_coords.y = INT_MIN;
+        max_coords.z = INT_MIN;
+        min_coords.x = INT_MAX;
+        min_coords.y = INT_MAX;
+        min_coords.z = INT_MAX;
+
+        for(int i = 0; i < n_triangles; ++i) {
+            if(triangles[i].maxX() > max_coords.x)
+              max_coords.x = triangles[i].maxX();
+            if(triangles[i].minX() < min_coords.x)
+                min_coords.x = triangles[i].minX();
+            if(triangles[i].maxY() > max_coords.y)
+                max_coords.y = triangles[i].maxY();
+            if(triangles[i].minY() < min_coords.y)
+                min_coords.y = triangles[i].minY();
+            if(triangles[i].maxZ() > max_coords.z)
+                max_coords.z = triangles[i].maxZ();
+            if(triangles[i].minZ() < min_coords.z)
+                min_coords.z = triangles[i].minZ();
+	    }
+
+        Point minCoords = getMinCoords();
+        Point maxCoords = getMaxCoords();
+        
+        return true;
+    }
+
+    GLfloat height(Point &p) {
+        return -1.0;
+    }
+
+    void draw() {
+        //glBindTexture(GL_TEXTURE_2D, texture);
+
+        glPushMatrix();
+        glBegin(GL_TRIANGLES);
+        for(int i = 0; i < n_triangles; ++i) {
+            GLfloat elevation = AVG(triangles[i].maxZ(), triangles[i].minZ());
+            setElevationColor(elevation);
+
+            //glTexCoord2f(triangles[i].v1.x, triangles[i].v1.x);
+            glVertex3fv((GLfloat *)&triangles[i].v1.vs);
+
+            //glTexCoord2f(triangles[i].v2.x, triangles[i].v2.x);
+            glVertex3fv((GLfloat *)&triangles[i].v2.vs);
+
+            //glTexCoord2f(triangles[i].v3.x, triangles[i].v3.x);
+            glVertex3fv((GLfloat *)&triangles[i].v3.vs);
+        }
+        glEnd();
+        glPopMatrix();
+    }
+
+    
+    void setElevationColor(GLfloat elevation) {
+        GLfloat relative_height = (elevation - min_coords.z) / (max_coords.z - min_coords.z);
+        if(relative_height < colors[0][0]) {
+            glColor3fv(colors[0]+1);
+        } else if(relative_height < colors[1][0]) {
+            setColor(1, relative_height);
+        } else if(relative_height < colors[2][0]) {
+            setColor(2, relative_height);
+        } else if(relative_height < colors[3][0]) {
+            setColor(3, relative_height);
+        } else if(relative_height < colors[4][0]) {
+            setColor(4, relative_height);
+        } else {
+            glColor3fv(colors[5]+1);
+        }
+    }
+
+    void setColor(int i, GLfloat relative_height) {
+        GLfloat s = (relative_height-colors[i-1][0]) / (colors[i][0] - colors[i-1][0]);
+        glColor3f(lerp(colors[i][1],colors[i+1][1],s),
+                  lerp(colors[i][2],colors[i+1][2],s),
+                  lerp(colors[i][3],colors[i+1][3],s)
+        );
+    }
+
+    Point getMaxCoords() {
+        return max_coords;
+    }
+  
+    Point getMinCoords() {
+        return min_coords; 
+    }
+
+    static const GLfloat colors[6][4];
+
+};
+
+const GLfloat Terrain::colors[6][4] = {
+    {0.005, 0.2, 0.2, 1.0},
+    {0.05, 0.8, 0.5, 0.2},
+    {0.14, 0.3, 0.6, 0.3},
+    {0.4, 0.3, 0.8, 0.3},
+    {0.6, 0.5, 0.7, 0.5},
+    {1.0, 1.0, 1.0, 1.0},
+};
+
+Terrain terrain;
+
+
+
 class Parabola {
 private:
     Point ctrlpts[3];
@@ -258,13 +454,18 @@ public:
         generateParabolas();
     }
 
+    #define SAFETY_FACTOR (50)
     void optimize() {
         for(int i = 0; i < sites.size()-1; i+=2) {
             Point cur = sites[i].p;
             Point next = sites[i+1].p;
-
             Point candidate = lerp(cur, next, 0.5);
-            //candidate.z += 200;
+            
+            GLfloat height = terrain.height(candidate);
+            if(height < 0) {
+                candidate.z -= height;
+                candidate.z += SAFETY_FACTOR;
+            }
 
             insertJoint(candidate, i+1);
         }
@@ -372,160 +573,6 @@ public:
 
 };
 
-class Terrain {
-private:
-    struct Triangle {
-        GLfloat vs[0];
-        Point v1;
-        Point v2;
-        Point v3;
-
-        
-        GLfloat maxX() {
-            return MAX(MAX(v1.x, v2.x), v3.x);
-        }
-
-        GLfloat minX() {
-            return MIN(MIN(v1.x, v2.x), v3.x);
-        }
-
-        GLfloat maxY() {
-            return MAX(MAX(v1.y, v2.y), v3.y);
-        }
-
-        GLfloat minY() {
-            return MIN(MIN(v1.y, v2.y), v3.y);
-        }
-        
-        GLfloat maxZ() {
-            return MAX(MAX(v1.z, v2.z), v3.z);
-        }
-
-        GLfloat minZ() {
-            return MIN(MIN(v1.z, v2.z), v3.z);
-        }
-    };
-
-    int n_triangles;
-    int n_sites;
-    Point max_coords;
-    Point min_coords;
-    Triangle *triangles;
-
-
-public:
-    Terrain() : n_triangles(0), triangles(NULL) {}
-
-    bool init(char *file) {
-        // Free any existing state from a previous initialization
-        if(triangles) free(triangles);
-        std::ifstream in;
-        in.open(file);
-        // The total number of triangles will be the on the first line of the file
-        in >> n_triangles;
-        triangles = (Triangle*)malloc(sizeof(Triangle) * n_triangles);
-
-        for(int i = 0; i < n_triangles && in.good(); ++i) {
-            in >> triangles[i].v1.x >> triangles[i].v1.y >> triangles[i].v1.z;
-            in >> triangles[i].v2.x >> triangles[i].v2.y >> triangles[i].v2.z;
-            in >> triangles[i].v3.x >> triangles[i].v3.y >> triangles[i].v3.z;
-        }
-
-        if(in.fail()) {
-            return false;
-        }
-
-        // Now compute the max and min elevations which we'll need for our terrain shading
-        max_coords.x = INT_MIN;
-        max_coords.y = INT_MIN;
-        max_coords.z = INT_MIN;
-        min_coords.x = INT_MAX;
-        min_coords.y = INT_MAX;
-        min_coords.z = INT_MAX;
-
-        for(int i = 0; i < n_triangles; ++i) {
-            if(triangles[i].maxX() > max_coords.x)
-              max_coords.x = triangles[i].maxX();
-            if(triangles[i].minX() < min_coords.x)
-                min_coords.x = triangles[i].minX();
-            if(triangles[i].maxY() > max_coords.y)
-                max_coords.y = triangles[i].maxY();
-            if(triangles[i].minY() < min_coords.y)
-                min_coords.y = triangles[i].minY();
-            if(triangles[i].maxZ() > max_coords.z)
-                max_coords.z = triangles[i].maxZ();
-            if(triangles[i].minZ() < min_coords.z)
-                min_coords.z = triangles[i].minZ();
-	    }
-
-        Point minCoords = getMinCoords();
-        Point maxCoords = getMaxCoords();
-        
-        return true;
-    }
-
-    void draw() {
-        glPushMatrix();
-        glBegin(GL_TRIANGLES);
-        for(int i = 0; i < n_triangles; ++i) {
-            GLfloat elevation = AVG(triangles[i].maxZ(), triangles[i].minZ());
-            setElevationColor(elevation);
-
-            glVertex3fv((GLfloat *)&triangles[i].v1.vs);
-            glVertex3fv((GLfloat *)&triangles[i].v2.vs);
-            glVertex3fv((GLfloat *)&triangles[i].v3.vs);
-        }
-        glEnd();
-        glPopMatrix();
-    }
-
-    
-    void setElevationColor(GLfloat elevation) {
-        GLfloat relative_height = (elevation - min_coords.z) / (max_coords.z - min_coords.z);
-        if(relative_height < colors[0][0]) {
-            glColor3fv(colors[0]+1);
-        } else if(relative_height < colors[1][0]) {
-            setColor(1, relative_height);
-        } else if(relative_height < colors[2][0]) {
-            setColor(2, relative_height);
-        } else if(relative_height < colors[3][0]) {
-            setColor(3, relative_height);
-        } else if(relative_height < colors[4][0]) {
-            setColor(4, relative_height);
-        } else {
-            glColor3fv(colors[5]+1);
-        }
-    }
-
-    void setColor(int i, GLfloat relative_height) {
-        GLfloat s = (relative_height-colors[i-1][0]) / (colors[i][0] - colors[i-1][0]);
-        glColor3f(lerp(colors[i][1],colors[i+1][1],s),
-                  lerp(colors[i][2],colors[i+1][2],s),
-                  lerp(colors[i][3],colors[i+1][3],s)
-        );
-    }
-
-    Point getMaxCoords() {
-        return max_coords;
-    }
-  
-    Point getMinCoords() {
-        return min_coords; 
-    }
-
-    static const GLfloat colors[6][4];
-
-};
-
-const GLfloat Terrain::colors[6][4] = {
-    {0.005, 0.2, 0.2, 1.0},
-    {0.05, 0.8, 0.5, 0.2},
-    {0.14, 0.3, 0.6, 0.3},
-    {0.4, 0.3, 0.8, 0.3},
-    {0.6, 0.5, 0.7, 0.5},
-    {1.0, 1.0, 1.0, 1.0},
-};
-
 
 class Camera {
 private:
@@ -617,7 +664,6 @@ private:
 };
 
 
-Terrain terrain;
 Tour tour;
 Camera camera;
 

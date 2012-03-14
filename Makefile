@@ -1,4 +1,4 @@
-LIB = -lglut -lGL -lGLU
+LIB = -lglut -lGL -lGLU -lsfml-graphics
 CPPOPTS = -g
 CC = g++ $< $(CPPOPTS) $(LIB) -o $@ 
 
