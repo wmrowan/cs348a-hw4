@@ -234,83 +234,42 @@ private:
 class Spline {
 private:
     std::list<Parabola> list;
-    vector<Site> controlPts;
-    vector<GLfloat> knots;
-    Site last;
+    vector<Site> sites;
+    vector<Point> controlPts;
+    GLfloat step_size;
 
 public:
-    Spline() : controlPts(), knots() { }
+    Spline() : sites(), controlPts(), step_size(1) { }
 
     void addSite(Site &s) {
-        int numPts;
-        GLfloat prevKnot;
-        controlPts.push_back(s);
-        numPts = controlPts.size();
-        if(numPts > 1) {
-            GLfloat prevKnot;
-            prevKnot = knots[knots.size()-1];
-            knots.push_back(prevKnot + (controlPts[numPts-2].p.dist(controlPts[numPts-1].p)));         }
-        else {
-            knots.push_back(0);
-        }
-        last = s;
+        sites.push_back(s);
     }
 
-    void insertSite( Site &s, int index) {
-        controlPts.insert(controlPts.begin()+index, s);
-       //  
+    void insertJoint(Point p, int i) {
+        Site s;
+        s.p = p;
+        s.locked = false;
+        sites.insert(sites.begin()+i, s);
     }
 
-   /* void insertKnot(Site &site, int index) {
-        knots.insert(knots.begin()+index, knots[index-1] + .p.dist(site.p));
-        knots[index + 1] = site.p.dist(knots[index+1].p;
+    void genSpline() {
+        optimize();
+        findControlPts();
+        generateParabolas();
     }
-*/
-    void findControlPts(GLfloat step) {
-        Point planeCenter = lerp(controlPts[0].p, controlPts[1].p, .5);
-        Vector plane = controlPts[1].p - controlPts[0].p;
-        Site newPt;
-        newPt.locked = false;
-        newPt.p.z += step;
-        newPt.p.x = planeCenter.x + 1;
-        newPt.p.y = (((plane.x*(planeCenter.x - newPt.p.x)) + ((plane.z*(planeCenter.z - newPt.p.z))))/plane.y) + planeCenter.y;
-        controlPts.insert(controlPts.begin()+1, newPt);
 
-        int curr = 2;
-        Vector tangent;
-        Site currSite;
-        int knot1 = 0;
-        GLfloat knot1_dist;
-        GLfloat knot2_dist;
-        GLfloat ratio;
-        while(curr != controlPts.size()-1) {
-            currSite = controlPts[curr];
-            knot1_dist = knots[knot1 + 1] - knots[knot1]; 
-            knot1++;
-            knot2_dist = knots[knot1 + 1] - knots[knot1];
-            knot1++;
-            ratio = knot1_dist/knot2_dist;
-            tangent = controlPts[curr-1].p - currSite.p;
-            tangent = (ratio*-1)*tangent;
-            newPt.p.x = currSite.p.x + tangent.x; 
-            newPt.p.y = currSite.p.y + tangent.y;
-            newPt.p.z = currSite.p.z + tangent.z;  
-            controlPts.insert(controlPts.begin()+curr+1, newPt);
-            curr += 2;
+    void optimize() {
+        for(int i = 0; i < sites.size()-1; i+=2) {
+            Point cur = sites[i].p;
+            Point next = sites[i+1].p;
+
+            Point candidate = lerp(cur, next, 0.5);
+            //candidate.z += 200;
+
+            insertJoint(candidate, i+1);
         }
     }
 
-    void generateParabolas() {
-        for(int i = 0; i < controlPts.size()-3; i++) {
-            Parabola bc;
-            bc.setCtrlPoint(0, controlPts[i].p);
-            bc.setCtrlPoint(1, controlPts[i+1].p);
-            bc.setCtrlPoint(2, controlPts[i+2].p);
-            i++;
-            list.push_back(bc);
-        }
-    }
-   
     GLfloat length() {
         GLfloat l = 0.0;
         for(std::list<Parabola>::iterator iter = list.begin();
@@ -339,25 +298,43 @@ public:
         }
     }
 
-    void printKnots() {
-         for(std::vector<GLfloat>::iterator iter = knots.begin();
-                iter != knots.end(); ++iter) {
-             printf("%f\n", *iter);
-         }
+private:
+
+    void findControlPts() {
+        controlPts.clear();
+
+        Point planeCenter = lerp(sites[0].p, sites[1].p, .5);
+        Point newPt;
+
+        newPt = lerp(sites[0].p, sites[1].p, 0.8);
+        controlPts.insert(controlPts.begin(), newPt);
+
+        for(int i = 1; i < sites.size(); ++i) {
+            Point currSite = sites[i].p;
+            Vector prevTangent = controlPts[i-1] - currSite;
+            Vector nextTangent = -prevTangent;
+
+            Point nextCtrlPt = currSite + nextTangent;
+            controlPts.push_back(nextCtrlPt);
+        }
     }
 
-    void printControlPts() {
-         for(std::vector<Site>::iterator iter = controlPts.begin();
-                iter != controlPts.end(); ++iter) {
-             printf("%f %f %f\n", iter->p.x, iter->p.y, iter->p.z);
-         }
+    void generateParabolas() {
+        for(int i = 0; i < sites.size()-1; i++) {
+            Parabola bc;
+            bc.setCtrlPoint(0, sites[i].p);
+            bc.setCtrlPoint(1, controlPts[i]);
+            bc.setCtrlPoint(2, sites[i+1].p);
+            list.push_back(bc);
+        }
     }
+   
+    
 };
 
 class Tour {
 private:
      Spline spline;
-
      vector<Site> sites;
 
 public:
@@ -379,36 +356,18 @@ public:
         return in.eof();
     }
 
-    void findControlPts(GLfloat step) {
-        spline.findControlPts(step);
-        spline.generateParabolas();
+    void genTour() {
+        spline.genSpline();
+        printMetrics();
     }
 
     void draw() {
         spline.draw();
-        /*glBegin(GL_LINE_STRIP);
-        glLineWidth(100.0);
-        for(std::vector<Site>::iterator iter = sites.begin();
-            iter != sites.end(); ++iter) {
-                glVertex3fv(iter->p.vs);
-        }
-        glEnd();
-        */
     }
 
-    void printKnots() {
-        spline.printKnots();
-    }
-    
-    void printSites() {
-        for(std::vector<Site>::iterator iter = sites.begin();
-               iter != sites.end(); ++iter) {
-            printf("%f %f %f\n", iter->p.x, iter->p.y, iter->p.z);
-        }
-    }
-
-    void printControlPts() {
-        spline.printControlPts();
+    void printMetrics() {
+        cout << "Maximum curvature: " << spline.maxCurvature() << endl;;
+        cout << "Length: " << spline.length() << endl;;
     }
 
 };
@@ -629,9 +588,8 @@ public:
             // Rotate look theta around the vertical axis through pos
             glRotatef(theta, 0, 0, 1.0);
             
-
             // Rotate look phi about the horizontal axis through pos and 
-            glRotatef(phi, 0, 1, 0);
+            glRotatef(phi, 1, 0, 0);
 
             glGetFloatv(GL_MODELVIEW_MATRIX, viewMat);
         glPopMatrix();
@@ -769,7 +727,7 @@ void motion(int x, int y) {
         int diff_x = x - mouseState.lastX;
         int diff_y = y - mouseState.lastY;
 
-        camera.rotate(RAD_PER_UNIT * diff_x, RAD_PER_UNIT * diff_y);
+        camera.rotate(RAD_PER_UNIT * diff_x, RAD_PER_UNIT * -diff_y);
 
         mouseState.lastX = x;
         mouseState.lastY = y;
@@ -812,13 +770,8 @@ void usage() {
 
 int main(int argc, char **argv) {
     if(argc < 3 || !terrain.init(argv[1]) || !tour.init(argv[2])) usage();
-    tour.findControlPts(1);
-
-   // printf("these are the sites\n");
-    //tour.printSites();
-    //printf("these are the controlPts\n");
-    //tour.printControlPts();
     glInit(&argc, argv);
+    tour.genTour();
     glutMainLoop();
     return 0;
 }
