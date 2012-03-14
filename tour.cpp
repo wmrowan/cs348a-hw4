@@ -13,7 +13,6 @@
 #define MAX(X,Y) (X > Y ? X : Y)
 #define MIN(X,Y) (X < Y ? X : Y)
 #define AVG(X,Y) ((X + Y) / 2.0)
-#define NUM_GRADIENTS 8
 
 using namespace std;
 
@@ -52,23 +51,15 @@ struct Vector {
     Vector(GLfloat x_, GLfloat y_, GLfloat z_) : x(x_), y(y_), z(z_) {}
 
     void normalize() {
-        GLfloat length = sqrt(pow(x,2)+pow(y,2)+pow(z,2));
+        GLfloat length = norm();
         x /= length;
         y /= length;
         z /= length;
     }
 
-    bool operator==(Vector &other) {
-        // Assumes vectors are normalized
-        return (x == other.x) && (y == other.y) && (z == other.z);
+    GLfloat norm() {
+        return sqrt(pow(x,2)+pow(y,2)+pow(z,2));
     }
-};
-
-struct Line {
-    Point p;
-    Vector v;
-
-    Line(Point p_, Vector v_) : p(p_), v(v_) {}
 };
 
 Vector operator-(Vector v) {
@@ -87,12 +78,36 @@ Point operator+(Point p, Vector v) {
     return r;
 }
 
+Vector operator+(Vector one, Vector two) {
+    Vector r;
+    r.x = one.x + two.x;
+    r.y = one.y + two.y;
+    r.z = one.z + two.z;
+    return r;
+}
+
+Vector operator-(Vector one, Vector two) {
+    return one + (-two);
+}
+
 Vector operator-(Point one, Point two) {
     Vector v;
     v.x = one.x - two.x;
     v.y = one.y - two.y;
     v.z = one.z - two.z;
     return v;
+}
+
+Vector operator*(Vector v, GLfloat by) {
+    Vector r;
+    r.x *= by;
+    r.y *= by;
+    r.z *= by;
+    return r;
+}
+
+Vector operator*(GLfloat by, Vector v) {
+    return v*by;
 }
 
 Vector cross(Vector one, Vector two) {
@@ -102,15 +117,6 @@ Vector cross(Vector one, Vector two) {
     r.z = one.x * two.y - one.y * two.x;
     r.normalize();
     return r;
-}
-
-Point intersect(Line &one, Line &two) {
-    // TODO actually compute intersection
-    Point pt;
-    pt.x = 1.0;
-    pt.y = 1.0;
-    pt.z = 1.0;
-    return pt;
 }
 
 GLfloat lerp(GLfloat one, GLfloat two, GLfloat t) {
@@ -190,36 +196,30 @@ public:
 
     GLfloat maxCurvature() {
         GLfloat max_curvature = 0.0;
-
-        Point one = evaluate(0.0);
-        Point two = evaluate(step_size);
-        for(GLfloat t = 2*step_size; t < 1.0; t += step_size) {
-            Point three = evaluate(t);
-             
-            GLfloat curvature = findCurvature(one, two, three);
-            max_curvature = MAX(max_curvature, curvature);
-
-            one = two;
-            two = three;
+        for(GLfloat t = step_size; t < 1.0; t += step_size) {
+            max_curvature = MAX(max_curvature, curvature(t));
         }
+
+        return max_curvature;
     }
 
 private:
 
-    GLfloat findCurvature(Point &one, Point &two, Point &three) {
-        Point mpt1 = lerp(one, two, 0.5);
-        Vector a = two - mpt1;
-        Vector b = three - mpt1;
-        Vector vert = cross(a,b);
-        Vector ortho1 = cross(vert, a);
+    GLfloat curvature(GLfloat t) {
+        Vector fd = ddt(t);
+        Vector sd = d2dt2(t);
 
-        Point mpt2 = lerp(two, three, 0.5);
-        a = two - mpt2;
-        b = three - mpt2;
-        vert = cross(a,b);
-        Vector ortho2 = cross(vert, a);
+        return cross(fd, sd).norm() / pow(fd.norm(), 3);
+    }
+    
+    // First derivative of this parabola
+    Vector ddt(GLfloat t) {
+        return 2*(1-t)*(ctrlpts[1] - ctrlpts[0]) + 2*(ctrlpts[2] - ctrlpts[1]);
+    }
 
-        return 0.0;
+    // Second derivative of this parabola
+    Vector d2dt2(GLfloat t) {
+        return 2*(ctrlpts[2] - ctrlpts[1]) - 2*(ctrlpts[1] - ctrlpts[0]);
     }
 
 };
