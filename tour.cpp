@@ -658,9 +658,13 @@ public:
     Point getCurrPoint() {
         if(time >= 1) {
             time = 0;
+            currSite++;
             currP++;
         }
-        if(currP >= spline.numParabolas()) currP = 0;
+        if(currP >= spline.numParabolas()){
+            currP = 0;
+            currSite++;
+        }
         return spline.getPoint(currP, time);
     }
 
@@ -716,7 +720,7 @@ public:
     void look(Point pos, Point look) {
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
-        gluLookAt(pos.x,pos.y,pos.z,look.x,look.y,look.z,0,0,1);
+        gluLookAt(pos.x,pos.y,pos.z,pos.x+1,pos.y,pos.z-1,0,0,1);
     }
 
     void moveTo(Point to) {
