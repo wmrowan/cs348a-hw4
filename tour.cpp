@@ -270,10 +270,9 @@ public:
         Site newPt;
         newPt.locked = false;
         newPt.p.z += step;
-        newPt.p.x = planeCenter.x;
+        newPt.p.x = planeCenter.x + 1;
         newPt.p.y = (((plane.x*(planeCenter.x - newPt.p.x)) + ((plane.z*(planeCenter.z - newPt.p.z))))/plane.y) + planeCenter.y;
-        controlPts.insert(controlPts.begin(), newPt);
-
+        controlPts.insert(controlPts.begin()+1, newPt);
 
         int curr = 2;
         Vector tangent;
@@ -281,8 +280,13 @@ public:
         while(curr != controlPts.size()-1) {
             currSite = controlPts[curr];
             tangent = controlPts[curr-1].p - currSite.p;
+            printf("%f %f %f\n", currSite.p.x, currSite.p.y, currSite.p.z);
             tangent = -tangent;
-            newPt.p = newPt.p + tangent; 
+            printf("%f %f %f\n", tangent.x, tangent.y, tangent.z);
+            newPt.p.x = currSite.p.x + tangent.x; 
+            newPt.p.y = currSite.p.y + tangent.y;
+            newPt.p.z = currSite.p.z + tangent.z;  
+            printf("%f %f %f\n", newPt.p.x, newPt.p.y, newPt.p.z);
             controlPts.insert(controlPts.begin()+curr+1, newPt);
             curr += 2;
         }
@@ -294,7 +298,7 @@ public:
             bc.setCtrlPoint(0, controlPts[i].p);
             bc.setCtrlPoint(1, controlPts[i+1].p);
             bc.setCtrlPoint(2, controlPts[i+2].p);
-            
+            i++;
             list.push_back(bc);
         }
     }
@@ -331,6 +335,13 @@ public:
          for(std::vector<GLfloat>::iterator iter = knots.begin();
                 iter != knots.end(); ++iter) {
              printf("%f\n", *iter);
+         }
+    }
+
+    void printControlPts() {
+         for(std::vector<Site>::iterator iter = controlPts.begin();
+                iter != controlPts.end(); ++iter) {
+             printf("%f %f %f\n", iter->p.x, iter->p.y, iter->p.z);
          }
     }
 };
@@ -388,8 +399,11 @@ public:
         }
     }
 
-};
+    void printControlPts() {
+        spline.printControlPts();
+    }
 
+};
 
 class Terrain {
 private:
@@ -487,8 +501,9 @@ public:
         glPushMatrix();
         glBegin(GL_TRIANGLES);
         for(int i = 0; i < n_triangles; ++i) {
-            GLfloat elevation = (triangles[i].maxZ()+triangles[i].minZ())/2.;
+            GLfloat elevation = AVG(triangles[i].maxZ(), triangles[i].minZ());
             setElevationColor(elevation);
+
             glVertex3fv((GLfloat *)&triangles[i].v1.vs);
             glVertex3fv((GLfloat *)&triangles[i].v2.vs);
             glVertex3fv((GLfloat *)&triangles[i].v3.vs);
@@ -497,36 +512,32 @@ public:
         glPopMatrix();
     }
 
+    
     void setElevationColor(GLfloat elevation) {
-        GLfloat gradient[8][4] = {-1.,0.,0.,.5,
-                                  -.25,0.,0.,1.,
-                                  0.0,0.,.5,1.,
-                                  .0625,.94,.94,.25,
-                                  .125,.125,.625,0.,
-                                  .375,.875,.875,0.,
-                                  .75, .5,.5,.5,
-                                  1.,1.,1.,1.};
         GLfloat relative_height = (elevation - min_coords.z) / (max_coords.z - min_coords.z);
-        GLfloat scale = (2.0*relative_height)-1.;
-        
-        int gradientIndex = 0;
-        for(int i = 0; i < NUM_GRADIENTS; i++) {
-            if(scale <= gradient[i][0]) {
-                scale = (scale - min_coords.z/max_coords.z-min_coords.z);
-                //scale = (scale - gradient[i][0])/(gradient[i][0]-gradient[i-1][0]);
-                //scale = fabs(scale);
-                gradientIndex = i;
-                break;
-            }
+        if(relative_height < colors[0][0]) {
+            glColor3fv(colors[0]+1);
+        } else if(relative_height < colors[1][0]) {
+            setColor(1, relative_height);
+        } else if(relative_height < colors[2][0]) {
+            setColor(2, relative_height);
+        } else if(relative_height < colors[3][0]) {
+            setColor(3, relative_height);
+        } else if(relative_height < colors[4][0]) {
+            setColor(4, relative_height);
+        } else {
+            glColor3fv(colors[5]+1);
         }
-        glColor3f(scale*.6, scale*.0, scale*.0);
-        /*glColor3f( ((gradient[gradientIndex][1]+gradient[gradientIndex-1][1])/2.)*scale,
-                   ((gradient[gradientIndex][2]+gradient[gradientIndex-1][2])/2.)*scale,
-                   ((gradient[gradientIndex][3]+gradient[gradientIndex-1][3])/2.)*scale);
-        */
-       // glColor3f(0.4,0.6,0.4);
-
     }
+
+    void setColor(int i, GLfloat relative_height) {
+        GLfloat s = (relative_height-colors[i-1][0]) / (colors[i][0] - colors[i-1][0]);
+        glColor3f(lerp(colors[i][1],colors[i+1][1],s),
+                  lerp(colors[i][2],colors[i+1][2],s),
+                  lerp(colors[i][3],colors[i+1][3],s)
+        );
+    }
+
     Point getMaxCoords() {
         return max_coords;
     }
@@ -535,6 +546,17 @@ public:
         return min_coords; 
     }
 
+    static const GLfloat colors[6][4];
+
+};
+
+const GLfloat Terrain::colors[6][4] = {
+    {0.005, 0.2, 0.2, 1.0},
+    {0.05, 0.8, 0.5, 0.2},
+    {0.14, 0.3, 0.6, 0.3},
+    {0.4, 0.3, 0.8, 0.3},
+    {0.6, 0.5, 0.7, 0.5},
+    {1.0, 1.0, 1.0, 1.0},
 };
 
 
@@ -652,9 +674,8 @@ void draw() {
 }
 
 void key(unsigned char k, int x, int y) {
-    float scaleX = 100;
-    float scaleY = 50;
-    float scaleZ = 200;
+    float scaleX = 300;
+    float scaleY = 300;
     float stepChange = 1;
     switch(k) {
         case 'q':
@@ -672,12 +693,6 @@ void key(unsigned char k, int x, int y) {
         case 'd':
             camera.move(Vector(scaleX, 0.0, 0.0));
             break;
-        case 'u':
-            camera.move(Vector(0.0, 0.0, scaleZ));
-            break;
-        case 'j':
-            camera.move(Vector(0.0, 0.0, -scaleZ));
-            break;
         case '+':
             break;
         case '-':
@@ -685,7 +700,7 @@ void key(unsigned char k, int x, int y) {
         case '/':
             break;
         case 'r':
-            camera.moveTo(Point(0,100,60000));
+            camera.moveTo(Point(0,-100,60000));
             camera.lookAt(Point(0,0,0));
             break;
         default:
@@ -702,8 +717,12 @@ void wheel(int button, int state, int x, int y) {
     if(button == 3 || button == 4) {
         GLfloat dir = button == 3 ? -500 : 500;
         camera.move(Vector(0,0, dir));
+        glutPostRedisplay();
     }
-    glutPostRedisplay();
+}
+
+
+void motion(int x, int y) {
 }
 
 void glInit(int *argc, char **argv) {
@@ -717,6 +736,7 @@ void glInit(int *argc, char **argv) {
     glutKeyboardFunc(key);
     glutReshapeFunc(reshape);
     glutMouseFunc(wheel);
+    glutMotionFunc(motion);
 
     
     glEnable(GL_LIGHTING);
@@ -727,7 +747,7 @@ void glInit(int *argc, char **argv) {
     Point max = terrain.getMaxCoords();
     Point min = terrain.getMinCoords();
 
-    camera.moveTo(Point(0,100,60000));
+    camera.moveTo(Point(0,-100,60000));
     camera.lookAt(Point(0,0,0));
     
 }
@@ -739,7 +759,12 @@ void usage() {
 
 int main(int argc, char **argv) {
     if(argc < 3 || !terrain.init(argv[1]) || !tour.init(argv[2])) usage();
-    tour.findControlPts(10);
+    tour.findControlPts(1);
+
+   // printf("these are the sites\n");
+    //tour.printSites();
+    //printf("these are the controlPts\n");
+    //tour.printControlPts();
     glInit(&argc, argv);
     glutMainLoop();
     return 0;
