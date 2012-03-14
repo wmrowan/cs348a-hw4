@@ -7,6 +7,7 @@
 #include <list>
 #include <math.h>
 #include <vector>
+#include <float.h>
 
 #define INITIAL_WINDOW_SIZE (800)
 
@@ -77,6 +78,10 @@ Point operator+(Point p, Vector v) {
     r.y = p.y + v.y;
     r.z = p.z + v.z;
     return r;
+}
+
+Point operator-(Point p, Vector v) {
+    return p + (-v);
 }
 
 Vector operator+(Vector one, Vector two) {
@@ -279,9 +284,11 @@ public:
         for(int i = 0; i < n_triangles; i++) {
             if(triangles[i].inside(p)) {
                 Point pos = triangles[i].findBarycentric(p);
-                p.z - pos.z;
+                return p.z - pos.z;
             }               
         } 
+
+        return FLT_MAX; 
     }
 
     void draw() {
@@ -424,22 +431,17 @@ public:
         return max_curvature;
     }
 
-    GLfloat minDistance(Triangle *triangles, int n_triangles) {
-        GLfloat minDist = INT_MAX;
+    GLfloat minHeight() {
+        GLfloat minHeight = INT_MAX;
         Point zero;
         int count = 0;
-        for(GLfloat t = step_size; t < 1.0; t += step_size) {
+        for(GLfloat t = 0.1; t < 1.0; t += 0.1) {
             count = 0;
             Point cur = evaluate(t);
-            for(int i = 0; i < n_triangles; i++) {
-                if(triangles[i].inside(cur)) {
-                    Point p = triangles[i].findBarycentric(cur);
-                    minDist = MIN(minDist, cur.z - p.z);
-                    i = n_triangles;
-                }              
-            } 
+            GLfloat height = terrain.height(cur);
+            minHeight = MIN(minHeight, height);
         }
-        return minDist;
+        return minHeight;
     }
 
 private:
@@ -465,7 +467,7 @@ private:
 
 class Spline {
 private:
-    std::list<Parabola> list;
+    vector<Parabola> list;
     vector<Site> sites;
     vector<Point> controlPts;
     GLfloat step_size;
@@ -485,31 +487,44 @@ public:
     }
 
     void genSpline() {
-        optimize();
         findControlPts();
         generateParabolas();
     }
 
     #define SAFETY_FACTOR (50)
+    #define WELL_SIZE (50)
     void optimize() {
-        for(int i = 0; i < sites.size()-1; i+=2) {
+        genSpline();
+
+        Point c1 = lerp(sites[0].p, sites[1].p, 0.5);
+        c1.z += SAFETY_FACTOR;
+        insertJoint(c1, 1);
+
+        for(int i = 2; i < sites.size()-1; i+=3) {
+            Point prev = sites[i-2].p;
             Point cur = sites[i].p;
             Point next = sites[i+1].p;
-            Point candidate = lerp(cur, next, 0.5);
-            
-            GLfloat height = terrain.height(candidate);
-            if(height < 0) {
-                candidate.z -= height;
-                candidate.z += SAFETY_FACTOR;
-            }
 
-            insertJoint(candidate, i+1);
+            Vector tangent = next - prev;
+            tangent.normalize();
+            tangent = tangent * WELL_SIZE;
+
+            Point candidate1 = cur+tangent;
+            Point candidate2 = cur-tangent;
+
+            candidate1.z += SAFETY_FACTOR;
+            candidate2.z += SAFETY_FACTOR;
+            
+            insertJoint(candidate2, i+1);
+            insertJoint(candidate1, i);
         }
+
+        genSpline();
     }
 
     GLfloat length() {
         GLfloat l = 0.0;
-        for(std::list<Parabola>::iterator iter = list.begin();
+        for(vector<Parabola>::iterator iter = list.begin();
                 iter != list.end(); ++iter) {
             l += iter->length();
         }
@@ -519,7 +534,7 @@ public:
 
     GLfloat maxCurvature() {
         GLfloat max_curvature = 0.0;
-        for(std::list<Parabola>::iterator iter = list.begin();
+        for(vector<Parabola>::iterator iter = list.begin();
                 iter != list.end(); ++iter) {
             max_curvature = MAX(max_curvature, iter->maxCurvature());
         }
@@ -527,17 +542,17 @@ public:
         return max_curvature;
     }
     
-    GLfloat minDistance(Triangle* tri, int n_triangles) {
-        GLfloat minDistance = 0.0;
-        for(std::list<Parabola>::iterator iter = list.begin();
+    GLfloat minHeight() {
+        GLfloat minHeight = FLT_MAX;
+        for(vector<Parabola>::iterator iter = list.begin();
                 iter != list.end(); ++iter) {
-            minDistance = MIN(minDistance, iter->minDistance(tri, n_triangles));
+            minHeight = MIN(minHeight, iter->minHeight());
         }
-        return minDistance;
+        return minHeight;
     }
 
     void draw() {
-        for(std::list<Parabola>::iterator iter = list.begin();
+        for(vector<Parabola>::iterator iter = list.begin();
                 iter != list.end(); ++iter) {
             iter->draw();
         }
@@ -554,10 +569,15 @@ private:
         newPt = lerp(sites[0].p, sites[1].p, 0.8);
         controlPts.insert(controlPts.begin(), newPt);
 
-        for(int i = 1; i < sites.size(); ++i) {
+        for(int i = 1; i < sites.size()-1; ++i) {
             Point currSite = sites[i].p;
+            Point nextSite = sites[i+1].p;
             Vector prevTangent = controlPts[i-1] - currSite;
             Vector nextTangent = -prevTangent;
+            nextTangent.normalize();
+
+            GLfloat chordLength = (nextSite - currSite).norm();
+            nextTangent = nextTangent * chordLength;
 
             Point nextCtrlPt = currSite + nextTangent;
             controlPts.push_back(nextCtrlPt);
@@ -565,6 +585,7 @@ private:
     }
 
     void generateParabolas() {
+        list.clear();
         for(int i = 0; i < sites.size()-1; i++) {
             Parabola bc;
             bc.setCtrlPoint(0, sites[i].p);
@@ -602,24 +623,16 @@ public:
     }
 
     void genTour() {
-        spline.genSpline();
+        spline.optimize();
         printMetrics();
     }
 
     void draw() {
         spline.draw();
-        /*glBegin(GL_LINE_STRIP);
-        glLineWidth(100.0);
-        for(std::vector<Site>::iterator iter = sites.begin();
-            iter != sites.end(); ++iter) {
-                glVertex3fv(iter->p.vs);
-        }
-        glEnd();
-        */
     }
 
-    GLfloat minDistance(Triangle* tri, int n_triangles){
-        spline.minDistance(tri, n_triangles);
+    GLfloat minHeight(){
+        spline.minHeight();
     }
 
     void printSites() {
@@ -632,6 +645,7 @@ public:
     void printMetrics() {
         cout << "Maximum curvature: " << spline.maxCurvature() << endl;;
         cout << "Length: " << spline.length() << endl;;
+        cout << "Min height: " << minHeight() << endl;
     }
 
 };
@@ -878,7 +892,6 @@ void usage() {
 
 int main(int argc, char **argv) {
     if(argc < 3 || !terrain.init(argv[1]) || !tour.init(argv[2])) usage();
-    cout << tour.minDistance(terrain.getTriangles(), terrain.numTriangles()) << endl;
     glInit(&argc, argv);
     tour.genTour();
     glutMainLoop();
