@@ -296,9 +296,8 @@ public:
     }
 
     void draw() {
-        //spline.draw();
         glBegin(GL_LINE_STRIP);
-        glLineWidth(100.0);
+        glColor3f(0.0,0.0,0.0);
         for(std::vector<Point>::iterator iter = sites.begin();
             iter != sites.end(); ++iter) {
                 glVertex3fv(iter->vs);
@@ -306,6 +305,16 @@ public:
         glEnd();
     }
 
+};
+
+
+const GLfloat colors[6][4] {
+    {0.005, 0.2, 0.2, 1.0},
+    {0.05, 0.8, 0.5, 0.2},
+    {0.14, 0.3, 0.6, 0.3},
+    {0.4, 0.3, 0.8, 0.3},
+    {0.6, 0.5, 0.7, 0.5},
+    {1.0, 1.0, 1.0, 1.0},
 };
 
 
@@ -405,8 +414,9 @@ public:
         glPushMatrix();
         glBegin(GL_TRIANGLES);
         for(int i = 0; i < n_triangles; ++i) {
-            GLfloat elevation = (triangles[i].maxZ()+triangles[i].minZ())/2.;
+            GLfloat elevation = AVG(triangles[i].maxZ(), triangles[i].minZ());
             setElevationColor(elevation);
+
             glVertex3fv((GLfloat *)&triangles[i].v1.vs);
             glVertex3fv((GLfloat *)&triangles[i].v2.vs);
             glVertex3fv((GLfloat *)&triangles[i].v3.vs);
@@ -415,36 +425,32 @@ public:
         glPopMatrix();
     }
 
+    
     void setElevationColor(GLfloat elevation) {
-        GLfloat gradient[8][4] = {-1.,0.,0.,.5,
-                                  -.25,0.,0.,1.,
-                                  0.0,0.,.5,1.,
-                                  .0625,.94,.94,.25,
-                                  .125,.125,.625,0.,
-                                  .375,.875,.875,0.,
-                                  .75, .5,.5,.5,
-                                  1.,1.,1.,1.};
         GLfloat relative_height = (elevation - min_coords.z) / (max_coords.z - min_coords.z);
-        GLfloat scale = (2.0*relative_height)-1.;
-        
-        int gradientIndex = 0;
-        for(int i = 0; i < NUM_GRADIENTS; i++) {
-            if(scale <= gradient[i][0]) {
-                scale = (scale - min_coords.z/max_coords.z-min_coords.z);
-                //scale = (scale - gradient[i][0])/(gradient[i][0]-gradient[i-1][0]);
-                //scale = fabs(scale);
-                gradientIndex = i;
-                break;
-            }
+        if(relative_height < colors[0][0]) {
+            glColor3fv(colors[0]+1);
+        } else if(relative_height < colors[1][0]) {
+            setColor(1, relative_height);
+        } else if(relative_height < colors[2][0]) {
+            setColor(2, relative_height);
+        } else if(relative_height < colors[3][0]) {
+            setColor(3, relative_height);
+        } else if(relative_height < colors[4][0]) {
+            setColor(4, relative_height);
+        } else {
+            glColor3fv(colors[5]+1);
         }
-        glColor3f(scale*.6, scale*.0, scale*.0);
-        /*glColor3f( ((gradient[gradientIndex][1]+gradient[gradientIndex-1][1])/2.)*scale,
-                   ((gradient[gradientIndex][2]+gradient[gradientIndex-1][2])/2.)*scale,
-                   ((gradient[gradientIndex][3]+gradient[gradientIndex-1][3])/2.)*scale);
-        */
-       // glColor3f(0.4,0.6,0.4);
-
     }
+
+    void setColor(int i, GLfloat relative_height) {
+        GLfloat s = (relative_height-colors[i-1][0]) / (colors[i][0] - colors[i-1][0]);
+        glColor3f(lerp(colors[i][1],colors[i+1][1],s),
+                  lerp(colors[i][2],colors[i+1][2],s),
+                  lerp(colors[i][3],colors[i+1][3],s)
+        );
+    }
+
     Point getMaxCoords() {
         return max_coords;
     }
@@ -570,9 +576,8 @@ void draw() {
 }
 
 void key(unsigned char k, int x, int y) {
-    float scaleX = 100;
-    float scaleY = 50;
-    float scaleZ = 200;
+    float scaleX = 300;
+    float scaleY = 300;
     float stepChange = 1;
     switch(k) {
         case 'q':
@@ -590,12 +595,6 @@ void key(unsigned char k, int x, int y) {
         case 'd':
             camera.move(Vector(scaleX, 0.0, 0.0));
             break;
-        case 'u':
-            camera.move(Vector(0.0, 0.0, scaleZ));
-            break;
-        case 'j':
-            camera.move(Vector(0.0, 0.0, -scaleZ));
-            break;
         case '+':
             break;
         case '-':
@@ -603,7 +602,7 @@ void key(unsigned char k, int x, int y) {
         case '/':
             break;
         case 'r':
-            camera.moveTo(Point(0,100,60000));
+            camera.moveTo(Point(0,-100,60000));
             camera.lookAt(Point(0,0,0));
             break;
         default:
@@ -620,8 +619,12 @@ void wheel(int button, int state, int x, int y) {
     if(button == 3 || button == 4) {
         GLfloat dir = button == 3 ? -500 : 500;
         camera.move(Vector(0,0, dir));
+        glutPostRedisplay();
     }
-    glutPostRedisplay();
+}
+
+
+void motion(int x, int y) {
 }
 
 void glInit(int *argc, char **argv) {
@@ -635,6 +638,7 @@ void glInit(int *argc, char **argv) {
     glutKeyboardFunc(key);
     glutReshapeFunc(reshape);
     glutMouseFunc(wheel);
+    glutMotionFunc(motion);
 
     
     glEnable(GL_LIGHTING);
@@ -645,7 +649,7 @@ void glInit(int *argc, char **argv) {
     Point max = terrain.getMaxCoords();
     Point min = terrain.getMinCoords();
 
-    camera.moveTo(Point(0,100,60000));
+    camera.moveTo(Point(0,-100,60000));
     camera.lookAt(Point(0,0,0));
     
 }
