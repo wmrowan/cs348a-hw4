@@ -34,6 +34,9 @@ struct Point {
     GLfloat y;
     GLfloat z;
 
+    Point() : x(0), y(0), z(0) {}
+    Point(GLfloat x_, GLfloat y_, GLfloat z_) : x(x_), y(y_), z(z_) {}
+
     GLfloat dist(Point &other) {
         return sqrt(pow(other.x-x,2)+pow(other.y-y,2)+pow(other.z-z,2));
     }
@@ -44,6 +47,9 @@ struct Vector {
     GLfloat x;
     GLfloat y;
     GLfloat z;
+
+    Vector() : x(0), y(0), z(0) {}
+    Vector(GLfloat x_, GLfloat y_, GLfloat z_) : x(x_), y(y_), z(z_) {}
 
     void normalize() {
         GLfloat length = sqrt(pow(x,2)+pow(y,2)+pow(z,2));
@@ -65,23 +71,36 @@ struct Line {
     Line(Point p_, Vector v_) : p(p_), v(v_) {}
 };
 
-Vector operator-(Point &one, Point &two) {
+Vector operator-(Vector v) {
     Vector r;
-    r.x = one.x - two.x;
-    r.y = one.y - two.y;
-    r.z = one.z - two.z;
-    r.normalize();
-
+    r.x = -v.x;
+    r.y = -v.y;
+    r.z = -v.z;
     return r;
 }
 
-Vector cross(Vector &one, Vector &two) {
+Point operator+(Point p, Vector v) {
+    Point r;
+    r.x = p.x + v.x;
+    r.y = p.y + v.y;
+    r.z = p.z + v.z;
+    return r;
+}
+
+Vector operator-(Point one, Point two) {
+    Vector v;
+    v.x = one.x - two.x;
+    v.y = one.y - two.y;
+    v.z = one.z - two.z;
+    return v;
+}
+
+Vector cross(Vector one, Vector two) {
     Vector r;
     r.x = one.y * two.z - one.z * two.y;
     r.y = one.z * two.x - one.x * two.z;
     r.z = one.x * two.y - one.y * two.x;
     r.normalize();
-
     return r;
 }
 
@@ -448,12 +467,12 @@ private:
     GLfloat aspect_ratio;
 
 public:
-    Camera() :  pos(), look(), close(0.01), far(100),
+    Camera() :  pos(), look(), close(10), far(100000),
                 window_width(INITIAL_WINDOW_SIZE),
                 window_height(INITIAL_WINDOW_SIZE),
                 aspect_ratio((GLfloat)window_width / (GLfloat)window_height)
     {
-        update();
+        updateProj();
     }
 
     void draw() {
@@ -462,95 +481,47 @@ public:
         gluLookAt(pos.x, pos.y, pos.z,
                   look.x,look.y,look.z,
                   0,0,1);
-
-        //glTranslatef(0, 0, -60000);
     }
 
-    /*
-    void move(Tour* tour) {
-        if(tour->isEnd()) {
-             tour->reset();
-             pos = tour->getSite(tour->getCurrSite());
-             look = tour->getSite(tour->getCurrSite() + 1);
-        }
-        int step = tour->getStepSize();
-        if(fabs(look.x - pos.x) > step) {
-            if(look.x - pos.x > 0) { 
-                pos.x += step;
-            } else {
-                pos.x -= step;
-            }
-        } else {
-            pos.x = look.x;
-        }
-        if(fabs(look.y - pos.y) > step) { 
-            if(look.y - pos.y > 0) { 
-                pos.y += step;
-            } else {
-                pos.y -= step;
-            }
-        } else {
-            pos.y = look.y;
-        }
-        if(fabs(look.z - pos.z) > step) { 
-             if(look.z - pos.z > 0) { 
-                pos.z += step;
-            } else {
-                pos.z -= step;
-            }
-        } else {
-            pos.z = look.z;
-        }
-        if(pos.x == look.x && pos.y == look.y && pos.z == look.z) {
-            tour->nextSite(); 
-            look = tour->getSite(tour->getCurrSite()+1);
-        }       
+    void moveTo(Point to) {
+        Vector diff = to - pos;
+        pos = to;
+        look = look + diff;
     }
-    */
 
-    void moveTo(GLfloat x, GLfloat y, GLfloat z) {
-        pos.x = x;
-        pos.y = y;
-        pos.z = z;
+    void move(Vector diff) {
+        moveTo(pos + diff);
     }
     
-    void lookAt(GLfloat x, GLfloat y, GLfloat z) {
-        look.x = x;
-        look.y = y;
-        look.z = z;
+    void lookAt(Point at) {
+        look = at;
     }
 
-    void changePos(GLfloat x, GLfloat y, GLfloat z) {
-        pos.x += x;
-        pos.y += y;
-        pos.z += z;
-    }
-
-    void changeLook(GLfloat x, GLfloat y, GLfloat z) {
-        look.x += x;
-        look.y += y;
-        look.z += z;
-    }
-
-    void setClip(GLfloat min, GLfloat max) {
-        close = min;
-        far = max;
+    void lookTo(Vector diff) {
+        lookAt(look + diff);
     }
 
     void reshape(int new_width, int new_height) {
         window_width = new_width;
         window_height = new_height;
-        update();
+        updateProj();
     }
 
 private:
-    void update() {
+    void setClip(GLfloat min, GLfloat max) {
+        close = min;
+        far = max;
+        updateProj();
+    }
+
+    void updateProj() {
         glViewport(0,0, window_width, window_height);
         glMatrixMode(GL_PROJECTION);
         glLoadIdentity();
         gluPerspective(45.0, aspect_ratio, close, far);
     }
 };
+
 
 Terrain terrain;
 Tour tour;
@@ -608,35 +579,32 @@ void key(unsigned char k, int x, int y) {
             exit(0);
             break;
         case 'w':
-            camera.changePos(0.,0.,-scaleZ);
+            camera.move(Vector(0.0, scaleY, 0.0));
             break;
         case 's':
-            camera.changePos(0.,0.,1*scaleZ);
+            camera.move(Vector(0.0, -scaleY, 0.0));
             break;
         case 'a':
-            camera.changePos(-1*scaleX,0.,0.);
+            camera.move(Vector(-scaleX, 0.0, 0.0));
             break;
         case 'd':
-            camera.changePos(scaleX,0.,0.);
+            camera.move(Vector(scaleX, 0.0, 0.0));
             break;
         case 'u':
-            camera.changePos(0.,scaleY,.0);
+            camera.move(Vector(0.0, 0.0, scaleZ));
             break;
         case 'j':
-            camera.changePos(0.,-1*scaleY,0.);
+            camera.move(Vector(0.0, 0.0, -scaleZ));
             break;
         case '+':
-            //tour.modifyStep(stepChange);
             break;
         case '-':
-            //tour.modifyStep(-1*stepChange);
             break;
         case '/':
-            //camera.move(&tour);
             break;
         case 'r':
-            camera.moveTo(0,100,60000);
-            camera.lookAt(0,0,0);
+            camera.moveTo(Point(0,100,60000));
+            camera.lookAt(Point(0,0,0));
             break;
         default:
             break;
@@ -646,6 +614,14 @@ void key(unsigned char k, int x, int y) {
 
 void reshape(int width, int height) {
     camera.reshape(width, height);
+}
+
+void wheel(int button, int state, int x, int y) {
+    if(button == 3 || button == 4) {
+        GLfloat dir = button == 3 ? -500 : 500;
+        camera.move(Vector(0,0, dir));
+    }
+    glutPostRedisplay();
 }
 
 void glInit(int *argc, char **argv) {
@@ -658,6 +634,8 @@ void glInit(int *argc, char **argv) {
     glutDisplayFunc(draw);
     glutKeyboardFunc(key);
     glutReshapeFunc(reshape);
+    glutMouseFunc(wheel);
+
     
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
@@ -667,14 +645,9 @@ void glInit(int *argc, char **argv) {
     Point max = terrain.getMaxCoords();
     Point min = terrain.getMinCoords();
 
-    //Point pos = tour.getSite(tour.getCurrSite());
-    //Point look =  tour.getSite(tour.getCurrSite()+1);
-    //camera.moveTo(pos.x,pos.y,pos.z);
-    //camera.lookAt(look.x,look.y,look.z);
-
-    camera.moveTo(0,100,60000);
-    camera.lookAt(0,0,0);
-    camera.setClip(0.01, 50000);
+    camera.moveTo(Point(0,100,60000));
+    camera.lookAt(Point(0,0,0));
+    
 }
 
 void usage() {
