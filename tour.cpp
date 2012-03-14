@@ -49,6 +49,7 @@ struct Vector {
 
     Vector() : x(0), y(0), z(0) {}
     Vector(GLfloat x_, GLfloat y_, GLfloat z_) : x(x_), y(y_), z(z_) {}
+    Vector(Point p) : x(p.x), y(p.y), z(p.z) {}
 
     void normalize() {
         GLfloat length = norm();
@@ -563,15 +564,16 @@ const GLfloat Terrain::colors[6][4] = {
 class Camera {
 private:
     Point pos;
-    Point look;
     GLfloat close;
     GLfloat far;
     int window_width;
     int window_height;
     GLfloat aspect_ratio;
 
+    GLfloat viewMat[16];
+
 public:
-    Camera() :  pos(), look(), close(10), far(100000),
+    Camera() :  pos(), close(10), far(100000),
                 window_width(INITIAL_WINDOW_SIZE),
                 window_height(INITIAL_WINDOW_SIZE),
                 aspect_ratio((GLfloat)window_width / (GLfloat)window_height)
@@ -582,27 +584,50 @@ public:
     void draw() {
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
-        gluLookAt(pos.x, pos.y, pos.z,
-                  look.x,look.y,look.z,
-                  0,0,1);
+        glMultMatrixf(viewMat);
     }
 
     void moveTo(Point to) {
-        Vector diff = to - pos;
-        pos = to;
-        look = look + diff;
+        move(to - pos);
     }
 
     void move(Vector diff) {
-        moveTo(pos + diff);
+        pos = pos + diff;
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+            glLoadIdentity();
+            glMultMatrixf(viewMat);
+            glTranslatef(-diff.x, -diff.y, -diff.z);
+            glGetFloatv(GL_MODELVIEW_MATRIX, viewMat);
+        glPopMatrix();
     }
     
     void lookAt(Point at) {
-        look = at;
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+            glLoadIdentity();
+            gluLookAt(pos.x, pos.y, pos.z,
+                      at.x,at.y,at.z,
+                      0,0,1);
+            glGetFloatv(GL_MODELVIEW_MATRIX, viewMat);
+        glPopMatrix();
     }
 
-    void lookTo(Vector diff) {
-        lookAt(look + diff);
+    void rotate(GLfloat theta, GLfloat phi) {
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+            glLoadIdentity();
+            glMultMatrixf(viewMat);
+
+            // Rotate look theta around the vertical axis through pos
+            glRotatef(theta, 0, 0, 1.0);
+            
+
+            // Rotate look phi about the horizontal axis through pos and 
+            glRotatef(phi, 0, 1, 0);
+
+            glGetFloatv(GL_MODELVIEW_MATRIX, viewMat);
+        glPopMatrix();
     }
 
     void reshape(int new_width, int new_height) {
@@ -713,16 +738,37 @@ void reshape(int width, int height) {
     camera.reshape(width, height);
 }
 
+struct {
+    bool inRotateMode;
+    int lastX;
+    int lastY;
+} mouseState;
+
 void wheel(int button, int state, int x, int y) {
     if(button == 3 || button == 4) {
         GLfloat dir = button == 3 ? -500 : 500;
         camera.move(Vector(0,0, dir));
         glutPostRedisplay();
+    } else if(button == GLUT_MIDDLE_BUTTON) {
+        mouseState.inRotateMode = !state;
+        mouseState.lastX = x;
+        mouseState.lastY = y;
     }
 }
 
-
+#define RAD_PER_UNIT 0.1
 void motion(int x, int y) {
+    if(mouseState.inRotateMode) {
+        int diff_x = x - mouseState.lastX;
+        int diff_y = y - mouseState.lastY;
+
+        camera.rotate(RAD_PER_UNIT * diff_x, RAD_PER_UNIT * diff_y);
+
+        mouseState.lastX = x;
+        mouseState.lastY = y;
+
+        glutPostRedisplay();
+    }
 }
 
 void glInit(int *argc, char **argv) {

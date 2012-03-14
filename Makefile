@@ -9,4 +9,4 @@ tags:
 	ctags -R .
 
 clean:
-	rm -f tour tags
+	rm -f tour tags regular.tri
