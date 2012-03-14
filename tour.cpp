@@ -493,7 +493,13 @@ public:
 
     #define SAFETY_FACTOR (50)
     #define WELL_SIZE (50)
-    void optimize() {
+    void optimize(int d) {
+        
+        // Take full advantage of that d factor...
+        for(int i = 0; i < sites.size(); ++i) {
+            sites[i].p.z += d;
+        }
+
         genSpline();
 
         Point c1 = lerp(sites[0].p, sites[1].p, 0.5);
@@ -622,8 +628,8 @@ public:
         return in.eof();
     }
 
-    void genTour() {
-        spline.optimize();
+    void genTour(int d) {
+        spline.optimize(d);
         printMetrics();
     }
 
@@ -886,14 +892,14 @@ void glInit(int *argc, char **argv) {
 }
 
 void usage() {
-    std::cout << "Usage ./tour terrain_data.tri terrain_data.tour" << std::endl;
+    std::cout << "Usage ./tour d terrain_data.tri terrain_data.tour" << std::endl;
     exit(1);
 }
 
 int main(int argc, char **argv) {
-    if(argc < 3 || !terrain.init(argv[1]) || !tour.init(argv[2])) usage();
+    if(argc < 4 || !terrain.init(argv[2]) || !tour.init(argv[3])) usage();
     glInit(&argc, argv);
-    tour.genTour();
+    tour.genTour(atoi(argv[1]));
     glutMainLoop();
     return 0;
 }
